@@ -1,0 +1,22 @@
+// GET /api/rooms/<code>[?since=<version>]: a live tournament. <code> is the viewer code or the participant code;
+// the X-Host-Key header makes it the host. With ?since and nothing new, returns { unchanged: true } (cheap polling).
+
+import { json, fail } from '../../../../lib/api.js';
+import { findRoom } from '../../../../lib/room.js';
+
+export async function onRequestGet({ env, request, params }) {
+  const { room, role } = await findRoom(env, request, params.code);
+  if (!room) return fail('No live tournament with that code. Check it and try again.', 404);
+  const since = Number(new URL(request.url).searchParams.get('since'));
+  const now = Date.now();
+  if (since && since === room.version) return json({ ok: true, unchanged: true, version: room.version, server_now: now });
+  return json({
+    ok: true, role, version: room.version, live: !!room.live, server_now: now,
+    code: room.code,
+    edit_code: role === 'host' || role === 'participant' ? room.edit_code : undefined,
+    data: JSON.parse(room.data),
+    timer: room.timer ? JSON.parse(room.timer) : null,
+    announce: room.announce ? JSON.parse(room.announce) : null,
+    updated_at: room.updated_at,
+  });
+}

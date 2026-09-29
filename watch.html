@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Watch · Tournament</title>
+<meta name="description" content="Follow a live tournament: standings, the race clock, bracket and the latest times, updating by themselves.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230B0E13'/%3E%3Cpath d='M7 24L13 8M13 24L19 8M19 24L25 8' stroke='%23FF9F1C' stroke-width='3.5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<!-- The viewer page for a live tournament: everything updates by itself every few seconds.
+     watch?code=K7M2QX · add &tv=1 for a bigger layout on a TV or a stream scene. -->
+<body class="watch">
+<header class="banner"><div class="wrap">
+  <a class="logo" href="./" title="Back to the start"><span class="logo-mark" aria-hidden="true"></span><span class="logo-text">Tournament</span></a>
+  <span class="chip live" id="wLive" hidden>Live</span>
+  <span class="watch-code mono" id="wCode"></span>
+  <span class="small muted" id="wUpdated" aria-live="off"></span>
+  <button class="btn small" id="wFull" type="button">Full screen</button>
+</div></header>
+
+<main class="wrap" id="wMain">
+  <form class="panel join watch-join" id="wJoin" hidden>
+    <label for="wJoinCode">Enter the viewer code</label>
+    <input type="text" id="wJoinCode" maxlength="9" autocomplete="off" placeholder="K7M-2QX">
+    <button class="btn teal" type="submit">Watch</button>
+  </form>
+  <div id="wMsg"></div>
+  <section id="wBody" hidden>
+    <div class="watch-title">
+      <div class="badges" id="wBadges"></div>
+      <h1 id="wName"></h1>
+      <div class="muted" id="wMeta"></div>
+    </div>
+    <div class="announce-bar" id="wAnnounce" hidden aria-live="polite"></div>
+    <div class="watch-grid">
+      <section class="panel watch-board">
+        <div class="section-head"><h2>Standings</h2><span class="small muted" id="wBoardNote"></span></div>
+        <ol class="board" id="wBoard"></ol>
+      </section>
+      <aside class="watch-side">
+        <section class="panel panel-pad watch-clock" id="wClockBox" hidden>
+          <div class="section-head"><h3>Race clock</h3><span class="small muted" id="wClockLabel"></span></div>
+          <div class="clock" id="wClock">0:00.00</div>
+        </section>
+        <section class="panel panel-pad" id="wNextBox" hidden>
+          <h3>Up next</h3>
+          <ul class="next-list" id="wNext"></ul>
+        </section>
+        <section class="panel panel-pad">
+          <h3>Latest times</h3>
+          <ul class="feed" id="wFeed"></ul>
+        </section>
+      </aside>
+    </div>
+    <section class="watch-section" id="wLeadersBox">
+      <div class="section-head"><h2>Fastest on each track</h2></div>
+      <div class="leaders" id="wLeaders"></div>
+    </section>
+    <section class="watch-section" id="wBracketBox" hidden>
+      <div class="section-head"><h2>Bracket</h2><span class="small muted" id="wBracketNote"></span></div>
+      <div id="wChampion"></div>
+      <div class="bracket-scroll"><div class="bracket" id="wBracket"></div></div>
+    </section>
+  </section>
+</main>
+
+<footer class="site-foot"><div class="wrap">
+  <span>Watching on tournament.codeman.club · updates every few seconds</span>
+  <a href="https://github.com/notacodeman/tournament" target="_blank" rel="noopener">Source on GitHub</a>
+</div></footer>
+<script type="module" src="js/watch.js"></script>
+</body>
+</html>

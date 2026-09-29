@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Overlay · Tournament</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230B0E13'/%3E%3Cpath d='M7 24L13 8M13 24L19 8M19 24L25 8' stroke='%23FF9F1C' stroke-width='3.5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<!-- Stream overlay for a tournament on the site: overlay?t=<slug>&n=10. Transparent background for an OBS browser
+     source; add &bg=dark for a solid background. Refreshes every 15 seconds. -->
+<body class="overlay">
+<main id="ov"></main>
+<script type="module">
+import { $, el, api } from './js/util.js';
+import { formatTime, formatGap } from './lib/time.js';
+import { overall } from './lib/standings.js';
+const REFRESH_MS = 15000;
+const q = new URLSearchParams(location.search);
+const slug = q.get('t');
+const count = Math.min(30, Math.max(3, Number(q.get('n')) || 10));
+if (q.get('bg') === 'dark') document.body.classList.add('solid');
+async function draw() {
+  try {
+    const data = await api(`/api/tournaments/${encodeURIComponent(slug)}`);
+    const t = data.tournament;
+    const s = overall(t, data.runs);
+    const points = t.scoring === 'points';
+    $('#ov').replaceChildren(el('div.ov-card', {},
+      el('div.ov-title', {}, t.name),
+      el('ol.ov-rows', {}, s.rows.slice(0, count).map(r => el('li', {},
+        el(`span.pos.p${r.pos}`, {}, String(r.pos)),
+        el('span.ov-name', {}, r.name),
+        el('span.ov-time.mono', {}, points ? `${r.points}` : formatTime(r.total)),
+        el('span.ov-gap.mono', {}, r.pos === 1 ? '' : points ? `−${r.gapLead}` : r.complete ? formatGap(r.gapLead) : `${r.done}/${s.eventCount}`))))));
+  } catch (err) {
+    $('#ov').replaceChildren(el('div.ov-card', {}, err.message));
+  }
+}
+draw();
+setInterval(draw, REFRESH_MS);
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Submit a time · Tournament</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230B0E13'/%3E%3Cpath d='M7 24L13 8M13 24L19 8M19 24L25 8' stroke='%23FF9F1C' stroke-width='3.5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<!-- Submit a time to a tournament on the site: submit?t=<slug>. Checked by an organizer before it counts. -->
+<body>
+<header class="banner"><div class="wrap">
+  <a class="logo" href="./" title="Back to the start"><span class="logo-mark" aria-hidden="true"></span><span class="logo-text">Tournament</span></a>
+  <a class="home-link" href="https://codeman.club">← codeman.club</a>
+</div></header>
+<main class="wrap form-page">
+  <a href="./" id="back" class="small">← Back to the standings</a>
+  <h1 style="font-size: clamp(34px, 7vw, 48px); font-style: italic; margin: 12px 0 4px">Submit a time</h1>
+  <p class="muted" id="tName" style="margin: 0 0 22px"></p>
+  <div id="msg"></div>
+  <form class="form" id="form" hidden novalidate>
+    <label class="field">Racer name
+      <input type="text" name="racer" id="racer" maxlength="32" autocomplete="nickname" required list="roster">
+      <datalist id="roster"></datalist>
+      <span class="note" id="racerNote">The name on the standings. Use the same one every time.</span>
+    </label>
+    <label class="field" id="platformField">Platform <select name="platform" id="platform"></select></label>
+    <label class="field">Track <select name="track" id="track"></select></label>
+    <fieldset style="border: 0; padding: 0; margin: 0; display: grid; gap: 6px">
+      <legend class="field" style="font-weight: 600; color: var(--ink); font-size: 14px; padding: 0; margin-bottom: 6px">Class</legend>
+      <div class="segmented" id="classes"></div>
+      <span class="note" id="classNote"></span>
+    </fieldset>
+    <label class="field">Time
+      <input class="time-input" type="text" name="time" id="time" inputmode="decimal" autocomplete="off" placeholder="1:04.777" required>
+      <span class="note" id="timeNote">m:ss.mmm. Pasting 64.777 works too.</span>
+    </label>
+    <label class="field" id="shotField">Screenshot
+      <span class="drop-img" id="drop"><span id="dropText">Tap to add the results screen<br><span class="note" id="proofHint">Track, class and time must be visible</span></span></span>
+      <input class="visually-hidden" type="file" name="screenshot" id="shot" accept="image/png,image/jpeg,image/webp">
+    </label>
+    <label class="field" id="videoField">Video link <span class="note">Optional · YouTube or Twitch, starting with https://</span>
+      <input type="url" name="video_url" id="video" placeholder="https://">
+    </label>
+    <label class="check" id="cheatField"><input type="checkbox" name="no_cheats"><span>No cheat codes were active (gravity codes, cheat cars, REVOLT and the like).</span></label>
+    <button class="btn primary" type="submit" id="send" style="min-height: 56px; font-size: 17px">Submit for review</button>
+    <p class="note" style="text-align: center; margin: 0">An organizer checks it against your proof. It shows on the standings once verified.</p>
+  </form>
+  <div class="panel panel-pad done-card" id="done" hidden></div>
+</main>
+<footer class="site-foot"><div class="wrap">
+  <span>tournament.codeman.club · Times are checked by each tournament's organizers.</span>
+  <a href="https://github.com/notacodeman/tournament" target="_blank" rel="noopener">Source on GitHub</a>
+</div></footer>
+<script type="module" src="js/submit.js"></script>
+</body>
+</html>

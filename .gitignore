@@ -1,0 +1,6 @@
+.DS_Store
+Thumbs.db
+
+# Local secrets and state for wrangler pages dev
+.dev.vars
+.wrangler/

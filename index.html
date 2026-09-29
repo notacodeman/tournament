@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tournament · codeman.club</title>
+<meta name="description" content="Timed game tournaments: submit times with proof, organizers verify them, standings update live. Presets for Parking Garage Rally Circuit.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2317181B'/%3E%3Cpath d='M-4 20L20-4M4 28L28 4M12 36L36 12' stroke='%23F4C21B' stroke-width='5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="banner"><div class="wrap">
+  <a class="logo" href="./" title="Back to the start"><span class="logo-mark" aria-hidden="true"></span><span class="logo-text">Tournament</span></a>
+  <button class="btn small change" id="change" hidden>Change<span class="wide-text"> tournament</span></button>
+  <a class="home-link" href="https://codeman.club">← codeman.club</a>
+</div></header>
+
+<!-- Splash: text on the left; upload box and the tournament lists on the right -->
+<main id="intro">
+<div class="wrap intro">
+  <div>
+    <div class="eyebrow">Level P1 · Timed tournaments</div>
+    <h1>Race it.<br>Prove it.<br><em>Climb the board.</em></h1>
+    <p class="lead">Run a tournament for any game with a timer: standings, brackets, a picking wheel and a race timer for the stream. There's a preset for Parking Garage Rally Circuit.</p>
+    <ol class="steps">
+      <li><div><b>Download a template</b> <span class="opt">CSV for a spreadsheet, JSON for code</span><p>It has an example tournament with every kind of row: settings, the tracks and classes that count, players, times and bracket results.</p></div></li>
+      <li><div><b>Fill it in</b><p>Open the CSV in Excel or Google Sheets, replace the example rows, and save it as CSV again. The <b>row_type</b> column says what each row is; rows starting with # are notes and get skipped.</p></div></li>
+      <li><div><b>Drop the file here</b><p>The tournament opens with standings, a bracket, the picking wheel and the timer. It's saved in this browser and listed on the right for next time.</p></div></li>
+      <li><div><b>Go live</b> <span class="opt">optional</span><p>Share it under a short code. Viewers get a watch page that updates by itself; tick a box to make a second code that lets helpers add times and bracket results.</p></div></li>
+      <li><div><b>Change it and upload again</b><p>Edit on the page, or use <b>Download file</b> to get it back as CSV or JSON. Uploading a file with the same <b>id</b> replaces that tournament.</p></div></li>
+    </ol>
+  </div>
+  <div class="start">
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".csv,.json,text/csv,application/json" aria-describedby="dropHelp">
+      <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M24 32V10M15 19l9-9 9 9"/><path d="M8 30v8h32v-8"/></svg>
+      <span><b>Drop a tournament file</b><span id="dropHelp">.csv or .json, or click to choose</span></span>
+    </label>
+    <p class="templates">Templates: <button class="linkbtn" type="button" id="tplCsv">CSV</button> · <button class="linkbtn" type="button" id="tplJson">JSON</button></p>
+    <p class="privacy"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg><span>Uploaded tournaments stay in this browser until you choose <b>Go live</b>, which shares one under a code.</span></p>
+    <form class="panel join" id="joinForm">
+      <label for="joinCode">Join a live tournament</label>
+      <input type="text" id="joinCode" maxlength="9" autocomplete="off" spellcheck="false" placeholder="K7M-2QX" aria-describedby="joinHelp">
+      <button class="btn teal" type="submit">Join</button>
+      <span class="note" id="joinHelp" style="grid-column: 1 / -1">A viewer code opens the watch page. A participant code lets you add times and results.</span>
+      <label class="field" id="joinNameField" hidden style="grid-column: 1 / -1">Your name <span class="note">Shown next to the changes you make</span>
+        <input type="text" id="joinName" maxlength="32" autocomplete="nickname">
+      </label>
+    </form>
+    <div id="startMsg"></div>
+
+    <section class="pick-block" id="mineBlock" hidden>
+      <h2>Your tournaments</h2>
+      <p class="note">Saved in this browser. Pick one to open.</p>
+      <div class="pick-list" role="radiogroup" aria-label="Your tournaments" id="localList"></div>
+    </section>
+
+    <section class="pick-block" id="siteBlock" hidden>
+      <div class="pick-head">
+        <h2>On the site</h2>
+        <div class="pills" role="group" aria-label="Show tournaments">
+          <button class="pill" type="button" data-show="open" aria-pressed="true">Live &amp; upcoming</button>
+          <button class="pill" type="button" data-show="finished" aria-pressed="false">Finished</button>
+        </div>
+      </div>
+      <div class="pick-list" role="radiogroup" aria-label="Tournaments on the site" id="pickList"></div>
+    </section>
+
+    <div class="start-form" id="racerForm" hidden>
+      <label class="field">Your racer name <span class="note">Optional: highlights your row and fills in the submit form</span>
+        <input type="text" id="racerName" maxlength="32" autocomplete="nickname" placeholder="e.g. driftking">
+      </label>
+      <label class="field" id="platformField">Platform
+        <select id="racerPlatform"></select>
+      </label>
+    </div>
+    <button class="btn primary go" id="go" type="button" hidden>Open tournament</button>
+
+    <div class="mine" id="mine" hidden>
+      <h3>Times you submitted</h3>
+      <ul id="mineList"></ul>
+    </div>
+    <p class="org-line">Running one on the site? <a href="admin">Organizer page</a></p>
+  </div>
+</div>
+</main>
+
+<!-- Tournament view -->
+<main id="view" hidden>
+<section class="t-hero on-dark">
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <div class="badges" id="tBadges"></div>
+        <h1 id="tName"></h1>
+        <div class="meta" id="tMeta"></div>
+      </div>
+      <div class="actions">
+        <a class="btn primary" id="tSubmit" href="#">Submit a time</a>
+        <button class="btn teal" id="tLive" type="button" hidden>Go live</button>
+        <button class="btn" id="tTimer" type="button" aria-pressed="false">Timer</button>
+        <a class="btn" id="tOverlay" href="#" target="_blank" rel="noopener">Stream overlay</a>
+        <button class="btn" id="tCsv" type="button">Export standings</button>
+        <button class="btn" id="tDownload" type="button" hidden>Download file</button>
+      </div>
+    </div>
+    <div class="stats" id="tStats"></div>
+    <div class="tabs" role="tablist" aria-label="Tournament views">
+      <button role="tab" type="button" data-tab="overall" aria-selected="true">Overall</button>
+      <button role="tab" type="button" data-tab="track" aria-selected="false">By track</button>
+      <button role="tab" type="button" data-tab="bracket" aria-selected="false" hidden>Bracket</button>
+      <button role="tab" type="button" data-tab="players" aria-selected="false">Players</button>
+      <button role="tab" type="button" data-tab="activity" aria-selected="false">Activity</button>
+      <button role="tab" type="button" data-tab="wheel" aria-selected="false">Wheel</button>
+      <button role="tab" type="button" data-tab="rules" aria-selected="false">Rules</button>
+    </div>
+  </div>
+</section>
+<div id="tLiveStrip"></div>
+<div class="wrap t-body" id="tBody">
+  <div id="tMain"></div>
+  <aside id="tSide"></aside>
+</div>
+</main>
+
+<footer class="site-foot"><div class="wrap">
+  <span>tournament.codeman.club · Times are checked by each tournament's organizers.</span>
+  <a href="https://github.com/notacodeman/tournament" target="_blank" rel="noopener">Source on GitHub</a>
+</div></footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
