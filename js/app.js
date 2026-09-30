@@ -9,6 +9,9 @@ import { confirmDialog } from './editors.js';
 import { getRoom, joined, cleanCode, prettyCode } from './room.js';
 import { openWizard } from './wizard.js';
 
+// wired first, so the main button works even if something later on the page fails
+document.getElementById('create').addEventListener('click', () => showWizard());
+
 let siteTournaments = [];
 let show = 'open';          // site list filter: 'open' (live and upcoming) or 'finished'
 let selected = null;        // { kind: 'site', slug } | { kind: 'local', id }
@@ -209,7 +212,6 @@ $('#file').addEventListener('change', e => { handleFile(e.target.files[0]); e.ta
 ['dragleave', 'drop'].forEach(type => drop.addEventListener(type, () => drop.classList.remove('over')));
 drop.addEventListener('drop', e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
 $('#joinForm').addEventListener('submit', join);
-$('#create').addEventListener('click', showWizard);
 $('#tplCsv').addEventListener('click', () => download('tournament-template.csv', templateCsv(), 'text/csv'));
 $('#tplJson').addEventListener('click', () => download('tournament-template.json', templateJson(), 'application/json'));
 

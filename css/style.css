@@ -536,14 +536,14 @@ div.field { display: grid; gap: 6px; font-size: 14px; font-weight: 600; color: v
 
 /* ---------- Start card and setup guide (js/wizard.js) ---------- */
 .create-card {
-  display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 18px; width: 100%; text-align: left;
-  padding: 26px 24px; border: 0; border-radius: 14px; cursor: pointer; color: var(--on-accent); background: var(--accent);
-  box-shadow: 0 0 0 1px rgba(255, 159, 28, .6), 0 14px 44px rgba(255, 159, 28, .25); transition: filter .15s, transform .15s;
+  display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 12px 16px; border: 0; border-radius: 10px; cursor: pointer; color: var(--on-accent); background: var(--accent);
+  box-shadow: 0 6px 24px rgba(255, 159, 28, .18); transition: filter .15s;
 }
-.create-card:hover { filter: brightness(1.08); transform: translateY(-2px); }
-.create-card svg { width: 58px; height: 58px; padding: 12px; background: var(--on-accent); color: var(--accent); border-radius: 12px; }
-.create-card b { display: block; font-family: var(--display); font-weight: 700; font-style: italic; font-size: 28px; text-transform: uppercase; line-height: 1.05; }
-.create-card span span { display: block; font-size: 14px; margin-top: 2px; }
+.create-card:hover { filter: brightness(1.08); }
+.create-card svg { width: 36px; height: 36px; padding: 8px; background: var(--on-accent); color: var(--accent); border-radius: 8px; }
+.create-card b { display: block; font-family: var(--display); font-weight: 700; font-size: 18px; text-transform: uppercase; line-height: 1.1; }
+.create-card span span { display: block; font-size: 13px; margin-top: 1px; }
 .small-drop { padding: 16px 18px; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; border-width: 1px; }
 .small-drop svg { width: 40px; height: 40px; padding: 8px; box-shadow: none; background: var(--panel-2); color: var(--accent); }
 .small-drop b { font-size: 17px; }
@@ -579,9 +579,6 @@ div.field { display: grid; gap: 6px; font-size: 14px; font-weight: 600; color: v
 .turnstile-box { position: fixed; right: 16px; bottom: 16px; z-index: 50; }
 @media (max-width: 640px) {
   .choices { grid-template-columns: minmax(0, 1fr); }
-  .create-card { grid-template-columns: 46px minmax(0, 1fr); padding: 20px 16px; gap: 14px; }
-  .create-card svg { width: 46px; height: 46px; padding: 9px; }
-  .create-card b { font-size: 22px; }
   .wiz-card { padding: 16px; }
   .wiz-steps li { font-size: 0; gap: 0; padding: 4px; }
   .wiz-steps li span { font-size: 12px; }
