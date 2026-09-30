@@ -52,7 +52,7 @@ export function readFile(name, text) {
 function fromJson(obj) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { errors: ['The JSON file should hold one tournament object.'] };
   const times = (obj.times || []).map((t, i) => ({ ...t, cls: t.class ?? t.cls, where: `times[${i}]` }));
-  return finish({ ...obj, times, players: obj.players || [] });
+  return buildModel({ ...obj, times, players: obj.players || [] });
 }
 
 function fromCsv(text) {
@@ -90,11 +90,11 @@ function fromCsv(text) {
   if (!model.tracks.length) delete model.tracks;
   if (!model.classes.length) delete model.classes;
   if (!model.events.length) delete model.events;
-  return finish(model);
+  return buildModel(model);
 }
 
-// Shared checks for both formats; fills gaps from the preset.
-function finish(raw) {
+// Shared checks for both formats (and the setup guide); fills gaps from the preset. Returns { model } or { errors }.
+export function buildModel(raw) {
   const errors = [];
   const preset = PRESETS[raw.preset] ? raw.preset : 'custom';
   const p = PRESETS[preset];

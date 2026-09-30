@@ -4,6 +4,7 @@
 import { $, el, api, me, myRuns, toast } from './util.js';
 import { parseTime, formatTime } from '../lib/time.js';
 import { PRESETS } from '../lib/presets.js';
+import { turnstileToken } from './turnstile.js';
 
 const MAX_SCREENSHOT_MB = 5;
 const slug = new URLSearchParams(location.search).get('t') || '';
@@ -98,6 +99,7 @@ $('#form').addEventListener('submit', async e => {
   e.preventDefault();
   const form = new FormData($('#form'));
   form.set('cls', cls);
+  try { form.set('turnstile', await turnstileToken()); } catch (err) { fail(err.message); return; }
   if (!parseTime(form.get('time'))) { fail('Write the time like 1:04.777.'); $('#time').focus(); return; }
   $('#send').disabled = true;
   $('#msg').replaceChildren();

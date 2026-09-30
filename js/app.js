@@ -7,6 +7,7 @@ import { readFile, templateCsv, templateJson } from './files.js';
 import { local, recordFromModel } from './local.js';
 import { confirmDialog } from './editors.js';
 import { getRoom, joined, cleanCode, prettyCode } from './room.js';
+import { openWizard } from './wizard.js';
 
 let siteTournaments = [];
 let show = 'open';          // site list filter: 'open' (live and upcoming) or 'finished'
@@ -167,6 +168,7 @@ function open() {
   if (location.search !== q) history.pushState(null, '', q);
   message('ok');
   $('#intro').hidden = true;
+  $('#wizard').hidden = true;
   $('#view').hidden = false;
   $('#change').hidden = false;
   window.scrollTo(0, 0);
@@ -177,10 +179,27 @@ function showIntro() {
   closeTournament();
   sessionSet('viewing', null);
   $('#view').hidden = true;
+  $('#wizard').hidden = true;
   $('#intro').hidden = false;
   $('#change').hidden = true;
   document.title = 'Tournament · codeman.club';
   renderAll();
+}
+
+// ---------- Setup guide ----------
+function showWizard() {
+  $('#intro').hidden = true;
+  $('#view').hidden = true;
+  $('#wizard').hidden = false;
+  $('#change').hidden = false;
+  history.pushState(null, '', '?new');
+  window.scrollTo(0, 0);
+  openWizard(record => {
+    $('#wizard').hidden = true;
+    if (!record) { history.replaceState(null, '', location.pathname); showIntro(); return; }
+    selected = { kind: 'local', id: record.id };
+    open();
+  });
 }
 
 // ---------- Start ----------
@@ -190,6 +209,7 @@ $('#file').addEventListener('change', e => { handleFile(e.target.files[0]); e.ta
 ['dragleave', 'drop'].forEach(type => drop.addEventListener(type, () => drop.classList.remove('over')));
 drop.addEventListener('drop', e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
 $('#joinForm').addEventListener('submit', join);
+$('#create').addEventListener('click', showWizard);
 $('#tplCsv').addEventListener('click', () => download('tournament-template.csv', templateCsv(), 'text/csv'));
 $('#tplJson').addEventListener('click', () => download('tournament-template.json', templateJson(), 'application/json'));
 
@@ -200,6 +220,7 @@ $('#racerName').addEventListener('keydown', e => { if (e.key === 'Enter') open()
 $('#change').addEventListener('click', () => { history.pushState(null, '', location.pathname); showIntro(); });
 window.addEventListener('popstate', () => {
   const q = new URLSearchParams(location.search);
+  if (!$('#wizard').hidden && !q.has('new')) { $('#wizard').hidden = true; showIntro(); return; }
   if (!$('#view').hidden && !q.get('t') && !q.get('local')) showIntro();
 });
 wireView();
@@ -223,6 +244,7 @@ const viewing = sessionGet('viewing');
 if (selected?.kind === 'room') open();
 else if (selected?.kind === 'local' && viewing && same(JSON.parse(viewing), selected)) open();
 if (joinCode) { $('#joinCode').value = prettyCode(joinCode); join(); }
+if (q.has('new')) showWizard();
 loadSite().then(() => {
   if (selected?.kind === 'site' && !siteTournaments.some(t => t.slug === selected.slug)) { selected = null; renderAll(); }
   if (selected?.kind === 'site' && viewing && same(JSON.parse(viewing), selected) && $('#view').hidden) open();

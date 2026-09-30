@@ -2,6 +2,7 @@
 // database; the host key that proves you're the host stays in this browser, inside the tournament's local record.
 
 import { api, store } from './util.js';
+import { turnstileToken } from './turnstile.js';
 
 export const POLL_MS = 3000;          // how often an open room checks for changes
 export const prettyCode = code => (code && code.length === 6 ? `${code.slice(0, 3)}-${code.slice(3)}` : code && code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code || '');
@@ -9,8 +10,8 @@ export const cleanCode = code => String(code || '').toUpperCase().replace(/[^A-Z
 
 const headers = hostKey => (hostKey ? { 'X-Host-Key': hostKey } : {});
 
-export const startRoom = (record, participants) =>
-  api('/api/rooms', { json: { record: stripRoom(record), participants: !!participants } });
+export const startRoom = async (record, participants) =>
+  api('/api/rooms', { json: { record: stripRoom(record), participants: !!participants, turnstile: await turnstileToken() } });
 
 export const getRoom = (code, { since, hostKey } = {}) =>
   api(`/api/rooms/${encodeURIComponent(code)}${since ? `?since=${since}` : ''}`, { headers: headers(hostKey) });

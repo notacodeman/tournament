@@ -26,21 +26,22 @@
     <h1>Race it.<br>Prove it.<br><em>Climb the board.</em></h1>
     <p class="lead">Run a tournament for any game with a timer: standings, brackets, a picking wheel and a race timer for the stream. There's a preset for Parking Garage Rally Circuit.</p>
     <ol class="steps">
-      <li><div><b>Download a template</b> <span class="opt">CSV for a spreadsheet, JSON for code</span><p>It has an example tournament with every kind of row: settings, the tracks and classes that count, players, times and bracket results.</p></div></li>
-      <li><div><b>Fill it in</b><p>Open the CSV in Excel or Google Sheets, replace the example rows, and save it as CSV again. The <b>row_type</b> column says what each row is; rows starting with # are notes and get skipped.</p></div></li>
-      <li><div><b>Drop the file here</b><p>The tournament opens with standings, a bracket, the picking wheel and the timer. It's saved in this browser and listed on the right for next time.</p></div></li>
-      <li><div><b>Go live</b> <span class="opt">optional</span><p>Share it under a short code. Viewers get a watch page that updates by itself; tick a box to make a second code that lets helpers add times and bracket results.</p></div></li>
-      <li><div><b>Change it and upload again</b><p>Edit on the page, or use <b>Download file</b> to get it back as CSV or JSON. Uploading a file with the same <b>id</b> replaces that tournament.</p></div></li>
+      <li><div><b>Create a tournament</b><p>The guide on the right walks you through it: the game, which tracks and classes count, how it's scored, and who's playing. No spreadsheet needed.</p></div></li>
+      <li><div><b>Run it on the page</b><p>Add times as people race, build a bracket, spin the picking wheel for the next track, and keep the race timer on screen or pop it out.</p></div></li>
+      <li><div><b>Go live</b> <span class="opt">optional</span><p>Share it under a short code. Viewers get a page that updates by itself; tick a box for a second code that lets helpers add times and bracket results.</p></div></li>
+      <li><div><b>Keep a copy</b><p>Tournaments are saved in your browser. Live ones are removed from the site a week after their last change, so use <b>Download file</b> to keep one, and drop the file here to bring it back.</p></div></li>
     </ol>
   </div>
   <div class="start">
-    <label class="drop" id="drop">
+    <button class="create-card" type="button" id="create">
+      <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"><path d="M24 10v28M10 24h28"/></svg>
+      <span><b>Create a tournament</b><span>A few quick steps. Nothing to download.</span></span>
+    </button>
+    <label class="drop small-drop" id="drop">
       <input type="file" id="file" accept=".csv,.json,text/csv,application/json" aria-describedby="dropHelp">
       <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M24 32V10M15 19l9-9 9 9"/><path d="M8 30v8h32v-8"/></svg>
-      <span><b>Drop a tournament file</b><span id="dropHelp">.csv or .json, or click to choose</span></span>
+      <span><b>Or open a tournament file</b><span id="dropHelp">A .csv or .json you downloaded from here or filled in from a template (<button class="linkbtn" type="button" id="tplCsv">CSV</button> · <button class="linkbtn" type="button" id="tplJson">JSON</button>)</span></span>
     </label>
-    <p class="templates">Templates: <button class="linkbtn" type="button" id="tplCsv">CSV</button> · <button class="linkbtn" type="button" id="tplJson">JSON</button></p>
-    <p class="privacy"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg><span>Uploaded tournaments stay in this browser until you choose <b>Go live</b>, which shares one under a code.</span></p>
     <form class="panel join" id="joinForm">
       <label for="joinCode">Join a live tournament</label>
       <input type="text" id="joinCode" maxlength="9" autocomplete="off" spellcheck="false" placeholder="K7M-2QX" aria-describedby="joinHelp">
@@ -83,8 +84,27 @@
       <h3>Times you submitted</h3>
       <ul id="mineList"></ul>
     </div>
-    <p class="org-line">Running one on the site? <a href="admin">Organizer page</a></p>
   </div>
+</div>
+</main>
+
+<!-- Setup guide: create a tournament step by step (js/wizard.js) -->
+<main id="wizard" hidden>
+<div class="wrap wizard">
+  <div class="wiz-head">
+    <div class="eyebrow">New tournament</div>
+    <h1 id="wizTitle">Create a tournament</h1>
+    <ol class="wiz-steps" id="wizSteps" aria-label="Steps"></ol>
+  </div>
+  <form class="panel wiz-card" id="wizForm" novalidate>
+    <div id="wizBody"></div>
+    <div id="wizMsg"></div>
+    <div class="wiz-nav">
+      <button class="btn" type="button" id="wizBack">Back</button>
+      <span class="note" id="wizCount"></span>
+      <button class="btn primary" type="submit" id="wizNext">Next</button>
+    </div>
+  </form>
 </div>
 </main>
 

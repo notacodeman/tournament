@@ -1,20 +1,22 @@
 // POST /api/rooms/<code>/ops { op, by, … }: one change to a live tournament (lib/room.js lists them and who may
 // send each). Retries when two people change it at the same moment, so neither change is lost.
 
-import { json, fail } from '../../../../lib/api.js';
+import { json, fail, readJson } from '../../../../lib/api.js';
 import { applyOp, findRoom, MAX_DATA_BYTES } from '../../../../lib/room.js';
+import { overLimit, limitMessage } from '../../../../lib/limits.js';
 
 const RETRIES = 4;
 
 export async function onRequestPost({ env, request, params }) {
-  const body = await request.json().catch(() => null);
+  const body = await readJson(request);
   if (!body?.op) return fail('Expected a change.');
+  if (await overLimit(env, request, 'roomOp')) return fail(limitMessage('roomOp'), 429);
   for (let attempt = 0; attempt < RETRIES; attempt++) {
     const { room, role } = await findRoom(env, request, params.code);
     if (!room) return fail('No live tournament with that code.', 404);
     let change;
     try {
-      change = applyOp({ data: JSON.parse(room.data), live: !!room.live }, body, role);
+      change = applyOp({ data: JSON.parse(room.data), live: !!room.live }, body, role, env.BLOCKED_WORDS);
     } catch (err) {
       return fail(err.message, 403);
     }

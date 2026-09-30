@@ -1,0 +1,10 @@
+# Security headers for every page (Cloudflare Pages reads this file).
+# Content-Security-Policy: scripts only from this site and Cloudflare (Turnstile, Web Analytics), no inline scripts,
+# fonts from Google Fonts, and nothing may put these pages in a frame. Inline styles are allowed; the pages set a few
+# style attributes, which can't run code.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  X-Frame-Options: DENY

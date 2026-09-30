@@ -3,10 +3,10 @@
 // POST /api/admin/runs: the organizer enters a time directly (a live event, or one read off a stream). It's verified
 //      straight away. Protected by Cloudflare Access.
 
-import { json, fail, audit, actor, runOut, tournamentOut, rosterName } from '../../../../lib/api.js';
+import { json, fail, audit, actor, runOut, tournamentOut, rosterName, readJson } from '../../../../lib/api.js';
 import { parseTime, formatTime } from '../../../../lib/time.js';
 
-export async function onRequestGet({ env, request }) {
+export async function onRequestGet({ env, request, data }) {
   const url = new URL(request.url);
   const tournamentId = Number(url.searchParams.get('t'));
   const status = url.searchParams.get('status') || 'pending';
@@ -26,8 +26,8 @@ export async function onRequestGet({ env, request }) {
   });
 }
 
-export async function onRequestPost({ request, env }) {
-  const body = await request.json().catch(() => null);
+export async function onRequestPost({ request, env, data }) {
+  const body = await readJson(request);
   if (!body) return fail('Expected the run as JSON.');
   const row = await env.DB.prepare('SELECT * FROM tournaments WHERE id = ?').bind(Number(body.tournament_id)).first();
   if (!row) return fail('No tournament with that id.', 404);
@@ -42,7 +42,7 @@ export async function onRequestPost({ request, env }) {
   if (!timeMs) return fail('Enter the time as m:ss.mmm, for example 1:04.777.');
   if (!Number.isFinite(penaltyMs) || penaltyMs < 0) return fail('The penalty has to be 0 or more seconds.');
 
-  const by = actor(request);
+  const by = actor(request, data);
   const now = new Date().toISOString();
   const token = crypto.randomUUID().replace(/-/g, '');
   const result = await env.DB.prepare(`INSERT INTO runs (tournament_id, racer, platform, track, cls, time_ms, penalty_ms, penalty_note,

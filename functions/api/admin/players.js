@@ -2,11 +2,11 @@
 // PUT /api/admin/players { tournament_id, players: [{ name, team, platform }] }: replaces the whole list; the order
 //     sent is the seed order. Protected by Cloudflare Access.
 
-import { json, fail, audit, actor } from '../../../lib/api.js';
+import { json, fail, audit, actor, readJson } from '../../../lib/api.js';
 
 const MAX_PLAYERS = 256;
 
-export async function onRequestGet({ env, request }) {
+export async function onRequestGet({ env, request, data }) {
   const tournamentId = Number(new URL(request.url).searchParams.get('t'));
   if (!tournamentId) return fail('Pick a tournament.');
   const { results } = await env.DB.prepare('SELECT name, team, platform, seed FROM players WHERE tournament_id = ? ORDER BY seed')
@@ -14,8 +14,8 @@ export async function onRequestGet({ env, request }) {
   return json({ ok: true, players: results });
 }
 
-export async function onRequestPut({ env, request }) {
-  const body = await request.json().catch(() => null);
+export async function onRequestPut({ env, request, data }) {
+  const body = await readJson(request);
   const tournamentId = Number(body?.tournament_id);
   const t = tournamentId && await env.DB.prepare('SELECT id FROM tournaments WHERE id = ?').bind(tournamentId).first();
   if (!t) return fail('No tournament with that id.', 404);
@@ -37,7 +37,7 @@ export async function onRequestPut({ env, request }) {
     env.DB.prepare('DELETE FROM players WHERE tournament_id = ?').bind(tournamentId),
     ...players.map((p, i) => env.DB.prepare('INSERT INTO players (tournament_id, name, team, platform, seed) VALUES (?, ?, ?, ?, ?)')
       .bind(tournamentId, p.name, p.team, p.platform, i + 1)),
-    audit(env, { tournamentId, action: 'players', by: actor(request), detail: `Player list saved (${players.length})`, before, after: players }),
+    audit(env, { tournamentId, action: 'players', by: actor(request, data), detail: `Player list saved (${players.length})`, before, after: players }),
   ]);
   return json({ ok: true, count: players.length });
 }

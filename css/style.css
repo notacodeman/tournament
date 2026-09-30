@@ -533,3 +533,65 @@ body.overlay.solid { background: var(--bg); }
 .form-grid { align-items: start; }
 label.field, div.field { align-content: start; }
 div.field { display: grid; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink); }
+
+/* ---------- Start card and setup guide (js/wizard.js) ---------- */
+.create-card {
+  display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 18px; width: 100%; text-align: left;
+  padding: 26px 24px; border: 0; border-radius: 14px; cursor: pointer; color: var(--on-accent); background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(255, 159, 28, .6), 0 14px 44px rgba(255, 159, 28, .25); transition: filter .15s, transform .15s;
+}
+.create-card:hover { filter: brightness(1.08); transform: translateY(-2px); }
+.create-card svg { width: 58px; height: 58px; padding: 12px; background: var(--on-accent); color: var(--accent); border-radius: 12px; }
+.create-card b { display: block; font-family: var(--display); font-weight: 700; font-style: italic; font-size: 28px; text-transform: uppercase; line-height: 1.05; }
+.create-card span span { display: block; font-size: 14px; margin-top: 2px; }
+.small-drop { padding: 16px 18px; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; border-width: 1px; }
+.small-drop svg { width: 40px; height: 40px; padding: 8px; box-shadow: none; background: var(--panel-2); color: var(--accent); }
+.small-drop b { font-size: 17px; }
+.drop .linkbtn { position: relative; z-index: 1; }
+.wizard { max-width: 860px; padding-top: 34px; }
+.wiz-head h1 { font-size: clamp(34px, 6vw, 56px); font-style: italic; margin: 10px 0 18px; }
+.wiz-steps { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.wiz-steps li { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 13px; font-weight: 600; }
+.wiz-steps li span { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--panel-2); font-size: 12px; }
+.wiz-steps li.now { color: var(--ink); border-color: var(--accent); }
+.wiz-steps li.now span { background: var(--accent); color: var(--on-accent); }
+.wiz-steps li.done span { background: var(--teal-soft); color: var(--teal); }
+.wiz-card { padding: 24px; display: grid; gap: 16px; }
+#wizBody { display: grid; gap: 16px; }
+#wizBody h2 { font-size: 26px; }
+#wizBody .note { margin: 0; }
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--panel-2); cursor: pointer; }
+.choice:hover { border-color: var(--accent); }
+.choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
+.choice input { margin-top: 3px; accent-color: var(--accent); width: 18px; height: 18px; flex-shrink: 0; }
+.choice b { display: block; color: var(--ink); font-size: 16px; margin-bottom: 2px; }
+.wiz-grid-wrap { overflow-x: auto; max-height: min(60vh, 560px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
+.wiz-grid { max-width: 620px; min-width: min-content; }
+.wiz-grid button.cell, .wiz-grid button.col-toggle { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
+.wiz-grid button.col-toggle { background: transparent; color: var(--accent); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 0; }
+.wiz-grid button.col-toggle:hover { text-decoration: underline; }
+.wiz-grid button.cell { height: 26px; }
+.wiz-grid button.cell:hover { outline: 2px solid var(--accent); }
+.wiz-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.wiz-summary span { padding: 6px 12px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; }
+.wiz-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.turnstile-box { position: fixed; right: 16px; bottom: 16px; z-index: 50; }
+@media (max-width: 640px) {
+  .choices { grid-template-columns: minmax(0, 1fr); }
+  .create-card { grid-template-columns: 46px minmax(0, 1fr); padding: 20px 16px; gap: 14px; }
+  .create-card svg { width: 46px; height: 46px; padding: 9px; }
+  .create-card b { font-size: 22px; }
+  .wiz-card { padding: 16px; }
+  .wiz-steps li { font-size: 0; gap: 0; padding: 4px; }
+  .wiz-steps li span { font-size: 12px; }
+  .wiz-steps li.now { font-size: 13px; gap: 8px; padding-right: 12px; }
+}
+.mode-switch { align-self: flex-end; }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.settings .foot { gap: 8px; justify-content: space-between; }
+.settings .foot .btn.primary { margin-left: auto; }
+.wiz-card, #wizBody { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+#wizBody > * { min-width: 0; }
+.row-actions { flex-wrap: nowrap; }
+@media (max-width: 640px) { #wizCount { display: none; } }

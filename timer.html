@@ -16,20 +16,6 @@
 <body class="timer-page">
 <main class="timer-window panel" id="timer"></main>
 <p class="timer-help small muted" id="help">Space start/pause · L lap · R reset · add <b>?clean=1</b> to the address for a clock-only view to capture in OBS</p>
-<script type="module">
-import { mountTimer, timer } from './js/timer.js';
-
-const q = new URLSearchParams(location.search);
-if (q.get('clean') === '1') document.body.classList.add('clean');
-if (q.get('bg') === 'transparent') document.body.classList.add('transparent');
-mountTimer(document.getElementById('timer'));
-
-document.addEventListener('keydown', e => {
-  if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.key === ' ') { e.preventDefault(); timer.toggle(); }
-  else if (e.key.toLowerCase() === 'l') timer.lap();
-  else if (e.key.toLowerCase() === 'r') timer.reset();
-});
-</script>
+<script type="module" src="js/timer-page.js"></script>
 </body>
 </html>

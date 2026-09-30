@@ -5,17 +5,17 @@
 //   update  { time?, penalty_s?, penalty_note?, racer?, platform? }  fix a run without changing its status
 // Every change is written to the audit log with the values before and after.
 
-import { json, fail, audit, actor } from '../../../../lib/api.js';
+import { json, fail, audit, actor, readJson } from '../../../../lib/api.js';
 import { parseTime, formatTime } from '../../../../lib/time.js';
 
 const EDITABLE = ['time_ms', 'penalty_ms', 'penalty_note', 'racer', 'platform'];
 
-export async function onRequestPost({ request, env, params }) {
+export async function onRequestPost({ request, env, params, data }) {
   const run = await env.DB.prepare('SELECT * FROM runs WHERE id = ?').bind(Number(params.id)).first();
   if (!run) return fail('No run with that id.', 404);
-  const body = await request.json().catch(() => null);
+  const body = await readJson(request);
   if (!body) return fail('Expected JSON.');
-  const by = actor(request);
+  const by = actor(request, data);
   const now = new Date().toISOString();
 
   // field changes shared by verify and update
@@ -76,4 +76,17 @@ export async function onRequestPost({ request, env, params }) {
     })));
   }
   return json({ ok: true, status });
+}
+
+// DELETE /api/admin/runs/<id>: removes a run completely, with its proof screenshot. The audit log keeps a line saying so.
+export async function onRequestDelete({ request, env, params, data }) {
+  const run = await env.DB.prepare('SELECT * FROM runs WHERE id = ?').bind(Number(params.id)).first();
+  if (!run) return fail('No run with that id.', 404);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM runs WHERE id = ?').bind(run.id),
+    audit(env, { tournamentId: run.tournament_id, runId: run.id, action: 'deleted', by: actor(request, data),
+      detail: `Deleted ${run.racer}: ${formatTime(run.time_ms)} on ${run.track} · ${run.cls}` }),
+  ]);
+  if (run.proof_key && env.PROOF) await env.PROOF.delete(run.proof_key);
+  return json({ ok: true });
 }

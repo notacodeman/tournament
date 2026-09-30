@@ -88,3 +88,18 @@ CREATE TABLE IF NOT EXISTS rooms (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS rooms_by_ip ON rooms (ip_hash, created_at);
+
+-- Rate limits (lib/limits.js): a counter per hashed connection per time window.
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT NOT NULL,
+  window INTEGER NOT NULL,                -- unix seconds at the start of the window
+  count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (key, window)
+);
+
+-- Small settings the site keeps for itself, e.g. when old tournaments were last cleared out (lib/cleanup.js).
+CREATE TABLE IF NOT EXISTS meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rooms_by_updated ON rooms (updated_at);

@@ -1,5 +1,7 @@
-// admin.html: the organizer page for tournaments run on the site. Verification queue, every run, players, bracket,
-// tournament settings (with the PGRC preset) and the audit log. Cloudflare Access protects /admin and /api/admin/*.
+// admin.html, for the site owner only (Cloudflare Access plus lib/access.js on the API):
+//   Live tournaments  every live tournament anyone started, with a delete button (they're also deleted
+//                     automatically a week after their last change)
+//   Site tournaments  tournaments run on the site: verification queue, every run, players, bracket, settings, audit log
 
 import { $, el, api, store, toast, fitRows, formatDate, ago, VISIBLE_ROWS } from './util.js';
 import { parseTime, formatTime } from '../lib/time.js';
@@ -14,6 +16,8 @@ let current = null;            // the picked tournament
 let tab = 'queue';
 let queueIndex = 0;
 let runFilter = { status: 'all', q: '' };
+let mode = 'rooms';             // 'rooms' (live tournaments) or 'site'
+let roomFilter = '';
 
 const say = (kind, text) => $('#aMsg').replaceChildren(text ? el(`div.message.${kind}`, {}, text) : '');
 
@@ -26,9 +30,10 @@ async function start() {
     say('error', err.message);
   }
   const q = new URLSearchParams(location.search);
+  mode = q.get('mode') === 'site' ? 'site' : 'rooms';
   tab = TABS.includes(q.get('tab')) ? q.get('tab') : 'queue';
   await loadList(Number(q.get('t')) || store.get('adminPick'));
-  if (!tournaments.length) { tab = 'settings'; editTournament(null); }
+  if (mode === 'site' && !tournaments.length) { tab = 'settings'; editTournament(null); }
 }
 
 async function loadList(pickId) {
@@ -49,13 +54,59 @@ async function loadList(pickId) {
 }
 
 function render() {
-  history.replaceState(null, '', `?${new URLSearchParams({ ...(current ? { t: current.id } : {}), tab })}`);
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+  document.querySelectorAll('.site-only').forEach(n => { n.hidden = mode !== 'site'; });
+  if (mode === 'rooms') {
+    history.replaceState(null, '', '?mode=rooms');
+    $('#aTitle').textContent = 'Live tournaments';
+    renderRooms();
+    return;
+  }
+  history.replaceState(null, '', `?${new URLSearchParams({ mode, ...(current ? { t: current.id } : {}), tab })}`);
   document.querySelectorAll('.admin-tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   $('#aTitle').textContent = current ? current.name : 'Tournaments';
   $('#viewLink').href = current ? `./?t=${encodeURIComponent(current.slug)}` : './';
   $('#viewLink').hidden = !current || current.status === 'draft';
   if (!current && tab !== 'settings') { $('#aBody').replaceChildren(el('div.panel.panel-pad', {}, el('p', {}, 'No tournaments yet. Make one with + New tournament.'))); return; }
   ({ queue: renderQueue, runs: renderRuns, players: renderPlayers, bracket: renderBracket, settings: () => editTournament(current), audit: renderAudit })[tab]();
+}
+
+// ---------- Live tournaments (rooms) ----------
+async function renderRooms() {
+  const body = $('#aBody');
+  body.replaceChildren(el('p.muted', {}, 'Loading…'));
+  const { rooms, retention_days } = await api('/api/admin/rooms');
+  const search = el('input', { type: 'search', placeholder: 'Name, game or code', value: roomFilter, 'aria-label': 'Search live tournaments' });
+  const table = el('div.table', { style: { '--cols': 'minmax(0,1.6fr) 100px 110px 110px 150px 200px', '--cols-phone': 'minmax(0,1fr) auto' } },
+    el('div.thead', {}, el('span', {}, 'Tournament'), el('span.wide', {}, 'Code'), el('span.wide', {}, 'Players · times'),
+      el('span.wide', {}, 'Last change'), el('span.wide', {}, 'Auto-deletes'), el('span.r', {}, '')));
+  const rows = el('div.rows');
+  table.append(rows);
+  const draw = () => {
+    const q = roomFilter.trim().toLowerCase();
+    const list = rooms.filter(r => !q || `${r.name} ${r.game} ${r.code}`.toLowerCase().includes(q));
+    rows.replaceChildren(...(list.length ? list.map(r => el('div.row', {},
+      el('span', {}, el('span.name', {}, r.name || '(no name)'),
+        el('span.sub', {}, [r.game, r.live ? 'live' : 'ended', r.participants ? 'helpers can edit' : '', `${Math.round(r.bytes / 1024)} KB`].filter(Boolean).join(' · ')),
+        el('span.sub.phone-only', {}, `${r.code} · ${r.players} players · ${r.runs} times · deletes ${formatDate(r.deletes_at)}`)),
+      el('span.wide.mono', {}, r.code),
+      el('span.wide', {}, `${r.players} · ${r.runs}`),
+      el('span.wide.small', {}, ago(r.updated_at)),
+      el('span.wide.small.muted', {}, formatDate(r.deletes_at, true)),
+      el('span.r.row-actions', {},
+        el('a.btn.small', { href: `watch?code=${r.code}`, target: '_blank', rel: 'noopener' }, 'Watch'),
+        el('button.btn.small.danger', { type: 'button', onclick: () => confirmDialog(`Delete “${r.name}”?`,
+          'It’s removed from the site now: its viewer and helper codes stop working. The host still has their own copy in their browser.',
+          async () => { await api(`/api/admin/rooms/${r.code}`, { method: 'DELETE' }); toast('Deleted'); renderRooms(); }) }, 'Delete')))) : [el('div.empty', {}, rooms.length ? 'No live tournaments match.' : 'No live tournaments right now.')]));
+    rows.scrollTop = 0;
+    fitRows(rows, VISIBLE_ROWS);
+  };
+  search.addEventListener('input', () => { roomFilter = search.value; draw(); });
+  body.replaceChildren(
+    el('div.section-head', {}, el('h2', {}, `${rooms.length} live ${rooms.length === 1 ? 'tournament' : 'tournaments'}`), el('div.toolbar', {}, search)),
+    el('p.note', {}, `Anyone can start one from the start page. Each is deleted automatically ${retention_days} days after its last change; delete one here to remove it now.`),
+    table);
+  draw();
 }
 
 // ---------- Queue ----------
@@ -167,7 +218,10 @@ function runDialog(run) {
         run.status !== 'verified' ? el('option', { value: 'verify' }, 'Verify') : '',
         run.status !== 'pending' ? el('option', { value: 'reopen' }, 'Back to pending') : '',
         run.status !== 'rejected' ? el('option', { value: 'reject' }, 'Reject') : '')),
-      el('label.field.wide', {}, 'Reject reason (only when rejecting)', el('input', { type: 'text', name: 'reason', maxlength: 300 })))),
+      el('label.field.wide', {}, 'Reject reason (only when rejecting)', el('input', { type: 'text', name: 'reason', maxlength: 300 }))),
+    el('button.btn.small.danger', { type: 'button', onclick: e => { e.target.closest('dialog').close(); confirmDialog('Delete this run?',
+      `${run.racer}: ${formatTime(run.time_ms)} on ${run.track} · ${run.cls}, with its screenshot. The audit log keeps a line saying it was deleted.`,
+      async () => { await api(`/api/admin/runs/${run.id}`, { method: 'DELETE' }); toast('Run deleted'); await loadList(current.id); }); } }, 'Delete run')),
   async f => {
     const v = f.elements;
     const body = { action: v.action.value, racer: v.racer.value, time: v.time.value, penalty_s: v.penalty.value, penalty_note: v.note.value, reason: v.reason.value };
@@ -284,7 +338,11 @@ function editTournament(t) {
       el('label.check.wide', {}, el('input', { type: 'checkbox', name: 'no_cheats', checked: !!(base.no_cheats ?? base.noCheats) }), el('span', {}, 'Racers must confirm no cheat codes were active')),
       field('Description', el('textarea', { name: 'description', rows: 3 }, base.description || ''), '', true),
       field('Rules', el('textarea', { name: 'rules', rows: 5 }, base.rules || ''), '', true)),
-    el('div.foot', {}, el('button.btn.primary', { type: 'submit' }, isNew ? 'Create tournament' : 'Save changes')));
+    el('div.foot', {},
+      isNew ? '' : el('button.btn.danger', { type: 'button', onclick: () => confirmDialog(`Delete “${t.name}”?`,
+        'Deletes the tournament with all its runs, players, screenshots and audit log. This can’t be undone.',
+        async () => { await api(`/api/admin/tournaments/${t.id}`, { method: 'DELETE' }); toast('Tournament deleted'); tab = 'queue'; await loadList(null); }, 'Delete') }, 'Delete tournament'),
+      el('button.btn.primary', { type: 'submit' }, isNew ? 'Create tournament' : 'Save changes')));
   f.addEventListener('submit', async e => {
     e.preventDefault();
     const v = f.elements;
@@ -320,6 +378,11 @@ async function renderAudit() {
 
 // ---------- Wiring ----------
 document.querySelectorAll('.admin-tabs [data-tab]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+  mode = b.dataset.mode;
+  if (mode === 'site' && !tournaments.length) { render(); tab = 'settings'; editTournament(null); return; }
+  render();
+}));
 $('#pick').addEventListener('change', e => {
   current = tournaments.find(t => t.id === Number(e.target.value));
   store.set('adminPick', current.id);

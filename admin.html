@@ -4,14 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Organizer · Tournament</title>
+<title>Admin · Tournament</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230B0E13'/%3E%3Cpath d='M7 24L13 8M13 24L19 8M19 24L25 8' stroke='%23FF9F1C' stroke-width='3.5'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
-<!-- Organizer page for tournaments run on the site. /admin and /api/admin/* are protected by Cloudflare Access. -->
+<!-- Admin page, for the site owner only: moderate live tournaments, and run tournaments on the site.
+     /admin and /api/admin/* are behind Cloudflare Access, and the API also checks the signed-in email itself. -->
 <body>
 <header class="banner"><div class="wrap">
   <a class="logo" href="./" title="Back to the start"><span class="logo-mark" aria-hidden="true"></span><span class="logo-text">Tournament</span></a>
@@ -22,9 +23,15 @@
 <main class="wrap admin">
   <div class="admin-head">
     <div>
-      <div class="eyebrow">Organizer</div>
+      <div class="eyebrow">Admin</div>
       <h1 id="aTitle">Tournaments</h1>
     </div>
+    <div class="pills mode-switch" role="group" aria-label="What to manage">
+      <button class="pill" type="button" data-mode="rooms" aria-pressed="true">Live tournaments</button>
+      <button class="pill" type="button" data-mode="site" aria-pressed="false">Site tournaments</button>
+    </div>
+  </div>
+  <div class="admin-head site-only" id="siteBar">
     <div class="toolbar">
       <label class="visually-hidden" for="pick">Tournament</label>
       <select id="pick"></select>
@@ -33,7 +40,7 @@
     </div>
   </div>
   <div id="aMsg"></div>
-  <div class="tabs admin-tabs" role="tablist" aria-label="Organizer views">
+  <div class="tabs admin-tabs site-only" role="tablist" aria-label="Organizer views">
     <button role="tab" type="button" data-tab="queue" aria-selected="true">Queue</button>
     <button role="tab" type="button" data-tab="runs" aria-selected="false">All runs</button>
     <button role="tab" type="button" data-tab="players" aria-selected="false">Players</button>
@@ -45,7 +52,7 @@
 </main>
 
 <footer class="site-foot"><div class="wrap">
-  <span>Organizer page · every change is written to the audit log</span>
+  <span>Admin page · only the site owner can open it</span>
   <a href="https://github.com/notacodeman/tournament" target="_blank" rel="noopener">Source on GitHub</a>
 </div></footer>
 <script type="module" src="js/admin.js"></script>

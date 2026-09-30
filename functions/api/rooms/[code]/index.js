@@ -3,10 +3,15 @@
 
 import { json, fail } from '../../../../lib/api.js';
 import { findRoom } from '../../../../lib/room.js';
+import { overLimit, limitMessage } from '../../../../lib/limits.js';
 
 export async function onRequestGet({ env, request, params }) {
   const { room, role } = await findRoom(env, request, params.code);
-  if (!room) return fail('No live tournament with that code. Check it and try again.', 404);
+  if (!room) {
+    // only wrong codes count here, so polling a real room is never limited but guessing codes is
+    if (await overLimit(env, request, 'roomMiss')) return fail(limitMessage('roomMiss'), 429);
+    return fail('No live tournament with that code. Check it and try again.', 404);
+  }
   const since = Number(new URL(request.url).searchParams.get('since'));
   const now = Date.now();
   if (since && since === room.version) return json({ ok: true, unchanged: true, version: room.version, server_now: now });

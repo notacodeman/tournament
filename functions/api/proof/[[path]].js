@@ -13,6 +13,10 @@ export async function onRequestGet({ env, params }) {
     headers: {
       'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
       'Cache-Control': 'public, max-age=31536000, immutable',
+      // an image and nothing else: never sniffed as another type, never run as a page
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; img-src 'self'; sandbox",
+      'Content-Disposition': 'inline',
     },
   });
 }
