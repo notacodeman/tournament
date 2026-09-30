@@ -14,12 +14,17 @@ page for next time. The host can add times, edit players and build and score a b
 **Download file** gives it back as CSV or JSON to edit and upload again (the `id` setting decides which tournament
 an upload replaces).
 
-**Go live** shares a hosted tournament under a short viewer code (like `K7M-2QX`). Viewers get `watch?code=…`, a
-page that updates by itself every few seconds: standings, the race clock, the host's messages and wheel picks, the
-latest times, fastest per track, and the bracket. Ticking *Let participants edit* makes a second, separate
-8-character code; people who join with it can add times and record bracket results, and every change is logged with
-their name. Only the host (who holds a secret key kept in their browser) can change players, rebuild the bracket,
-turn the participant code on or off, or end it.
+**Go live** puts a hosted tournament on the site with three codes to hand out:
+
+| Code | Looks like | Who it's for | What they can do |
+|---|---|---|---|
+| Viewer | `K7M-2QX` | spectators | `watch?code=…`: standings, race clock, messages, wheel picks, latest times, fastest per track, bracket, all updating by themselves |
+| Participant | `ABCD-EFGH` | racers | pick their name from the player list, then enter and remove **their own** times |
+| Mod | `ABCDE-FGHJK` | people helping run it | everything on the tournament page: anyone's times, bracket results, players, the shared timer, messages to viewers, end/reopen |
+
+The host (who holds a secret key kept in their browser) can do everything a mod can, plus make a new participant or mod
+code (the old one stops working at once) or turn either off. Every change is logged with who made it. Participant and
+mod codes are entered in *Join a live tournament* on the start page, or shared as `?join=<code>` links.
 
 **Run on the site (admin page, owner only).** For open time attacks where anyone can submit: create the tournament on
 `/admin`, racers send times with a screenshot or video from `submit?t=…`, the organizer verifies or rejects each one,
@@ -86,7 +91,7 @@ Plain HTML, CSS and JavaScript (ES modules) with no build step.
 | `GET /api/proof/<key>` | anyone | A proof screenshot from R2 |
 | `POST /api/rooms` | anyone | Put a tournament live; returns the codes and the host key |
 | `GET /api/rooms/<code>` | code holders | A live tournament (`?since=<version>` for cheap polling) |
-| `POST /api/rooms/<code>/ops` | participants, host | One change (see `lib/room.js`) |
+| `POST /api/rooms/<code>/ops` | participants, mods, host | One change; `lib/room.js` `ROLE_OPS` lists what each role may send |
 | `GET /api/config` | anyone | Public settings (the Turnstile site key) |
 | `/api/admin/*` | owner (Access + email check) | Live tournaments (list, delete), site tournaments, runs, players, bracket, audit log |
 
@@ -96,7 +101,8 @@ Plain HTML, CSS and JavaScript (ES modules) with no build step.
    `tournament.codeman.club`.
 2. **D1 database**: create one (e.g. `tournament`), paste `functions/schema.sql` into its Console and run it. In the
    Pages project, Settings → Bindings → add a D1 binding named **`DB`**. Every statement is `IF NOT EXISTS`, so running
-   the whole file again after an update only adds what's new.
+   the whole file again after an update only adds what's new. A database made before mod codes existed needs one
+   extra line first: `ALTER TABLE rooms ADD COLUMN mod_code TEXT;` (then run the file again).
 3. **R2 bucket** for proof screenshots: create one (e.g. `tournament-proof`) and add an R2 binding named **`PROOF`**.
    Without it, racers can still send video links.
 4. **Cloudflare Access**: a self-hosted application covering `admin` and `api/admin/*` on `tournament.codeman.club`,

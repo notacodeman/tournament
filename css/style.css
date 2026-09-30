@@ -63,6 +63,8 @@ main { flex: 1; }
 /* ---------- Banner ---------- */
 .banner { background: rgba(8, 11, 15, .85); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 25; }
 .banner .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+/* 1400px like the other codeman.club banners, so the logo and codeman.club link sit in the same spot on every subdomain */
+.banner .wrap { max-width: 1400px; padding: 0 clamp(16px, 3vw, 32px); }
 .logo { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
 .logo:hover { color: var(--ink); }
 .logo-mark {
@@ -289,6 +291,7 @@ label.field .note, .note { font-size: 12px; font-weight: 400; color: var(--muted
 .code-box .label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .code { font-family: var(--mono); font-size: 30px; font-weight: 700; letter-spacing: .12em; color: var(--teal); text-shadow: 0 0 16px rgba(46, 230, 214, .4); }
 .code.edit { color: var(--accent); text-shadow: 0 0 16px rgba(255, 159, 28, .35); font-size: 24px; }
+.code.mod { color: #C792FF; text-shadow: 0 0 16px rgba(199, 146, 255, .35); font-size: 22px; }
 .code-box .row-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .code-box .link { font-size: 12px; overflow-wrap: anywhere; color: var(--muted); }
 
@@ -406,7 +409,8 @@ body.transparent, .transparent .clock { background: transparent !important; }
   .wrap { padding: 0 16px; }
   .banner .wrap { gap: 12px; height: 56px; }
   .banner .change { margin-left: auto; }
-  .banner .change + .home-link { display: none; }
+  /* the Change button takes the link's place on phones, only while it's shown */
+  .banner .change:not([hidden]) + .home-link { display: none; }
   .wide-text { display: none; }
   .logo-text { font-size: 19px; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -429,7 +433,7 @@ body.transparent, .transparent .clock { background: transparent !important; }
 /* live strip under the tournament header */
 #tLiveStrip .wrap { padding-top: 18px; }
 .live-panel { padding: 14px; }
-.live-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.live-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; }
 .announce-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
 .announce-row input { min-height: 36px; }
 .live-host { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 2px; }

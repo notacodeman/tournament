@@ -2,7 +2,7 @@
 // Activity / Wheel / Rules tabs, plus the floating timer. It shows one of:
 //   site  a tournament run from the admin page (read-only here, refreshed every REFRESH_MS)
 //   local a tournament saved in this browser; the host edits it right here, and can put it live
-//   room  a live tournament joined with a participant code (can add times and bracket results)
+//   room  a live tournament joined with a participant code (enter your own times) or a mod code (run the tournament)
 // A local tournament that's live is a room too: changes go to the site's database and it checks for others' changes
 // every POLL_MS, keeping a copy in this browser. Standings are worked out in the browser with lib/standings.js.
 
@@ -20,7 +20,8 @@ import { POLL_MS, startRoom, getRoom, sendOp, stripRoom, prettyCode, watchUrl, j
 const REFRESH_MS = 15000;
 const TABS = ['overall', 'track', 'bracket', 'players', 'activity', 'wheel', 'rules'];
 
-let source = null;       // { kind: 'site', slug } | { kind: 'local', id } | { kind: 'room', code, name }
+let source = null;       // { kind: 'site', slug } | { kind: 'local', id } | { kind: 'room', code, name, role }
+let roomRecord = null;   // the live tournament as the server keeps it (mods build whole-tournament changes from it)
 let data = null;         // what's shown, in the API's shape; data.room is set for live rooms
 let version = 0;         // last room version seen
 let state = { tab: 'overall', event: 0, platform: '', open: null };
@@ -32,13 +33,19 @@ let floating = null;
 const localRecord = () => (source?.kind === 'local' ? local.get(source.id) : null);
 // the live room behind what's shown: { code, hostKey, role } or null
 function room() {
-  if (source?.kind === 'room') return { code: source.code, role: 'participant' };
+  if (source?.kind === 'room') return { code: source.code, role: data?.room?.role || source.role || 'participant' };
   const rec = localRecord();
   return rec?.room ? { code: rec.room.code, hostKey: rec.room.host_key, role: 'host' } : null;
 }
+// isHost: the tournament is saved in this browser (download it, put it live, change its codes)
+// canManage: host or mod: any time, bracket, players, timer, messages, end/reopen
+// canEdit: anyone who can enter times (participants only their own)
 const isHost = () => source?.kind === 'local';
-const canEdit = () => isHost() || source?.kind === 'room';
+const isParticipant = () => source?.kind === 'room' && room()?.role === 'participant';
+const canManage = () => isHost() || (source?.kind === 'room' && room()?.role === 'mod');
+const canEdit = () => canManage() || isParticipant();
 const byName = () => (source?.kind === 'room' ? source.name : isHost() ? 'host' : '');
+const ownRun = run => !isParticipant() || run.racer.toLowerCase() === String(source.name || '').toLowerCase();
 
 // ---------- URL state (shareable views) ----------
 function readUrl() {
@@ -121,16 +128,29 @@ async function loadRoom(r, quiet) {
       schedule();
       return load();
     }
+    if (/No live tournament/.test(err.message) && source.kind === 'room') {
+      // the host ended the room, or made a new code / turned this one off
+      clearInterval(pollTimer);
+      $('#tLiveStrip').replaceChildren();
+      $('#tMain').replaceChildren(el('div.message.error', {}, 'This code doesn’t work any more. The host may have made a new one: ask them for it and join again.'));
+      $('#tSide').replaceChildren();
+      return;
+    }
     if (!quiet) $('#tMain').replaceChildren(el('div.message.error', {}, err.message));
     return;
   }
   if (res.unchanged) return;
   version = res.version;
-  const liveInfo = { code: res.code, edit_code: res.edit_code, role: res.role, live: res.live, timer: res.timer, announce: res.announce };
+  if (source.kind === 'room' && res.role !== 'host' && res.role !== source.role) {
+    if (res.role === 'viewer') { location.href = `watch?code=${res.code}`; return; }   // the code was turned off
+    source.role = res.role;
+  }
+  roomRecord = res.data;
+  const liveInfo = { code: res.code, edit_code: res.edit_code, mod_code: res.mod_code, role: res.role, live: res.live, timer: res.timer, announce: res.announce };
   if (r.role === 'host') {
     // keep this browser's copy in step, so it survives if the room is ended or lost
     const rec = localRecord();
-    Object.assign(rec, stripRoom(res.data), { id: rec.id, room: { ...rec.room, edit_code: res.edit_code } });
+    Object.assign(rec, stripRoom(res.data), { id: rec.id, room: { code: rec.room.code, host_key: rec.room.host_key } });
     local.save(rec);
   }
   data = {
@@ -156,7 +176,7 @@ const actions = {
     if (room()) return op(detail.clear ? { op: 'clear_match', round: detail.round, index: detail.index } : { op: 'match_result', ...detail });
     saveLocal(rec => { rec.tournament.bracket = next; }, 'Bracket result saved');
   },
-  // host only: whole-tournament changes
+  // host and mods: whole-tournament changes
   async saveBracket(next, line) { return hostChange(rec => { rec.tournament.bracket = next; }, line); },
   async savePlayers(list) { return hostChange(rec => { rec.players = list.map((p, i) => ({ ...p, seed: i + 1 })); }, `Player list saved (${list.length})`); },
 };
@@ -169,7 +189,7 @@ async function op(body) {
 
 async function hostChange(change, line) {
   if (!room()) return saveLocal(change, line);
-  const rec = localRecord();
+  const rec = source.kind === 'room' ? structuredClone(roomRecord) : localRecord();
   change(rec);
   await op({ op: 'replace', record: stripRoom(rec), note: line });
 }
@@ -193,7 +213,7 @@ function render() {
   renderHead(t);
   renderLiveStrip();
   const bracketTab = document.querySelector('.tabs [data-tab="bracket"]');
-  bracketTab.hidden = !t.bracket && !isHost();
+  bracketTab.hidden = !t.bracket && !canManage();
   if (state.tab === 'bracket' && bracketTab.hidden) state.tab = 'overall';
   writeUrl();
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)));
@@ -206,7 +226,7 @@ function render() {
       const names = data.players.length ? data.players.map(p => p.name) : standings().rows.map(r => r.name);
       const teams = [...new Set(data.players.map(p => p.team).filter(Boolean))];
       mountWheel(main, t, names, teams, pick => {
-        if (room() && canEdit() && !liveEnded()) op({ op: 'announce', text: `Wheel: ${pick}` }).catch(err => toast(err.message, 'error'));
+        if (room() && canManage() && !liveEnded()) op({ op: 'announce', text: `Wheel: ${pick}` }).catch(err => toast(err.message, 'error'));
       });
       wheelMountedFor = t.slug;
     }
@@ -228,7 +248,8 @@ function renderHead(t) {
     live ? el(`span.chip.${live.live ? 'live' : 'finished'}`, {}, live.live ? 'Live' : 'Ended')
       : source.kind === 'local' ? el('span.chip.local', {}, 'Saved in this browser')
         : el(`span.chip.${t.status}`, {}, STATUS_LABEL[t.status]),
-    live && live.role === 'participant' ? el('span', {}, `You’re helping run this as ${source.name || 'a participant'}`) : '',
+    live && live.role === 'participant' ? el('span', {}, `You’re racing as ${source.name}`) : '',
+    live && live.role === 'mod' ? el('span', {}, `You’re a mod as ${source.name}`) : '',
     t.ends_at ? el('span', {}, `${t.starts_at ? formatDate(t.starts_at) + ' – ' : ''}ends ${formatDate(t.ends_at, true)}`) : dateRange(t) ? el('span', {}, dateRange(t)) : '');
   $('#tName').textContent = t.name;
   const bits = [t.game, formatLine(t)];
@@ -270,37 +291,42 @@ function renderLiveStrip() {
   const shareBox = el('input', { type: 'checkbox', checked: store.get('shareTimer', true) });
   shareBox.addEventListener('change', () => { store.set('shareTimer', shareBox.checked); if (shareBox.checked) pushTimer(); });
   const guard = fn => () => fn().catch(err => toast(err.message, 'error'));
-  const hostButtons = host ? [
-    live.edit_code
-      ? el('button.btn.small.danger', { type: 'button', onclick: () => confirmDialog('Stop participant editing?', 'The participant code stops working. You can make a new one any time.', () => op({ op: 'participants', enabled: false }), 'Stop') }, 'Stop participant code')
-      : el('button.btn.small', { type: 'button', onclick: guard(() => op({ op: 'participants', enabled: true })) }, 'Make a participant code'),
+  const manage = host || live.role === 'mod';
+  // a code box: the code, its link and (for the host) making a new one or turning it off
+  const codeBox = (which, code, label, blurb, url) => el('div.code-box', {},
+    el('span.label', {}, label),
+    code ? el(`span.code${{ viewer: '', participant: '.edit', mod: '.mod' }[which]}`, {}, prettyCode(code)) : el('p.note', {}, 'Off. Nobody can join with this kind of code.'),
+    code ? el('span.link', {}, url) : '',
+    el('span.small.muted', {}, blurb),
+    el('div.row-btns', {},
+      code ? copy(url, `${label.replace(' code', '')} link`) : '',
+      which === 'viewer' && code ? el('a.btn.small', { href: `watch?code=${code}`, target: '_blank', rel: 'noopener' }, 'Open viewer page') : '',
+      host && which !== 'viewer' ? el('button.btn.small', { type: 'button', onclick: () => confirmDialog(code ? `New ${label.toLowerCase()}?` : `Turn on a ${label.toLowerCase()}?`,
+        code ? 'The old code stops working at once. Anyone who joined with it has to join again with the new one.' : 'Makes a fresh code to hand out.',
+        () => op({ op: 'codes', which, action: 'new' }), code ? 'Make new code' : 'Turn on') }, code ? 'New code' : 'Turn on') : '',
+      host && which !== 'viewer' && code ? el('button.btn.small.danger', { type: 'button', onclick: () => confirmDialog(`Turn off the ${label.toLowerCase()}?`,
+        'It stops working at once; anyone using it drops to viewing. You can turn a new one on any time.', () => op({ op: 'codes', which, action: 'off' }), 'Turn off') }, 'Turn off') : ''));
+  const boxes = [codeBox('viewer', live.code, 'Viewer code', 'Watch only: standings, clock, bracket and messages.', watchUrl(live.code))];
+  if (manage) {
+    boxes.push(codeBox('participant', live.edit_code, 'Participant code', 'For racers: they pick their name and enter or remove their own times.', live.edit_code ? joinUrl(live.edit_code) : ''));
+    boxes.push(codeBox('mod', live.mod_code, 'Mod code', 'For people helping you run it: any time, bracket, players, timer, messages, end. Only you can change codes.', live.mod_code ? joinUrl(live.mod_code) : ''));
+  }
+  const announceForm = manage ? el('form.code-box', { onsubmit: e => {
+    e.preventDefault();
+    op({ op: 'announce', text: announceInput.value }).then(() => toast(announceInput.value ? 'Shown to viewers' : 'Message cleared')).catch(err => toast(err.message, 'error'));
+  } },
+    el('span.label', {}, 'Message for viewers'),
+    live.announce ? el('span.small', {}, `Showing: ${live.announce.text}`) : el('span.small.muted', {}, 'Nothing showing'),
+    el('div.announce-row', {}, announceInput, el('button.btn.small.teal', { type: 'submit', disabled: !live.live }, 'Show')),
+    el('label.check.small', {}, shareBox, el('span', {}, 'Share my timer with viewers'))) : '';
+  const manageBar = manage ? el('div.live-host', {},
+    el('span.note', {}, live.live ? 'Changes save to the site; everyone sees them within a few seconds.' : 'Ended. Viewers see the final standings.'),
     live.live
-      ? el('button.btn.small.danger', { type: 'button', onclick: () => confirmDialog('End the live tournament?', 'Viewers keep seeing the final standings, and nobody can change it until you reopen it.', () => op({ op: 'end' }), 'End') }, 'End live')
-      : el('button.btn.small.teal', { type: 'button', onclick: guard(() => op({ op: 'reopen' })) }, 'Reopen'),
-  ] : [];
+      ? el('button.btn.small.danger', { type: 'button', onclick: () => confirmDialog('End the live tournament?', 'Viewers keep seeing the final standings, and nobody can change it until a host or mod reopens it.', () => op({ op: 'end' }), 'End') }, 'End live')
+      : el('button.btn.small.teal', { type: 'button', onclick: guard(() => op({ op: 'reopen' })) }, 'Reopen'))
+    : el('div.live-host', {}, el('span.note', {}, live.live ? `You can enter and remove your own times as ${source.name}. Everyone sees them within a few seconds.` : 'Ended. The host or a mod can reopen it.'));
   box.replaceChildren(el('div.wrap', {}, el('div.panel.live-panel', {},
-    el('div.live-grid', {},
-      el('div.code-box', {},
-        el('span.label', {}, 'Viewer code'),
-        el('span.code', {}, prettyCode(live.code)),
-        el('span.link', {}, watchUrl(live.code)),
-        el('div.row-btns', {}, copy(watchUrl(live.code), 'Viewer link'), el('a.btn.small', { href: `watch?code=${live.code}`, target: '_blank', rel: 'noopener' }, 'Open viewer page'))),
-      live.edit_code ? el('div.code-box', {},
-        el('span.label', {}, 'Participant code · can add times and results'),
-        el('span.code.edit', {}, prettyCode(live.edit_code)),
-        el('span.link', {}, joinUrl(live.edit_code)),
-        el('div.row-btns', {}, copy(joinUrl(live.edit_code), 'Participant link'))) : el('div.code-box', {},
-        el('span.label', {}, 'Participants'),
-        el('p.note', {}, host ? 'Nobody else can edit. Make a participant code to let helpers add times and bracket results.' : 'The host turned participant editing off.')),
-      el('form.code-box', { onsubmit: e => {
-        e.preventDefault();
-        op({ op: 'announce', text: announceInput.value }).then(() => toast(announceInput.value ? 'Shown to viewers' : 'Message cleared')).catch(err => toast(err.message, 'error'));
-      } },
-        el('span.label', {}, 'Message for viewers'),
-        live.announce ? el('span.small', {}, `Showing: ${live.announce.text}`) : el('span.small.muted', {}, 'Nothing showing'),
-        el('div.announce-row', {}, announceInput, el('button.btn.small.teal', { type: 'submit', disabled: !live.live }, 'Show')),
-        el('label.check.small', {}, shareBox, el('span', {}, 'Share my timer with viewers')))),
-    host ? el('div.live-host', {}, el('span.note', {}, live.live ? 'Changes save to the site; everyone sees them within a few seconds.' : 'Ended. Viewers see the final standings.'), ...hostButtons) : '')));
+    el('div.live-grid', {}, ...boxes, announceForm), manageBar)));
 }
 
 function filteredRuns() {
@@ -324,7 +350,8 @@ function hostBar(note, ...buttons) {
 }
 const liveEnded = () => !!(data?.room && !data.room.live);
 const addTimeButton = (preset = {}) => el('button.btn.small', { type: 'button', disabled: liveEnded(), onclick: () =>
-  addTimeDialog(data.tournament, data.players, run => actions.addTime(run), preset) }, '+ Add a time');
+  addTimeDialog(data.tournament, data.players, run => actions.addTime(run), isParticipant() ? { ...preset, racer: source.name, lockRacer: true } : preset) },
+  isParticipant() ? '+ Add my time' : '+ Add a time');
 
 // ---------- Overall ----------
 function renderOverall() {
@@ -361,7 +388,7 @@ function renderOverall() {
   return [
     el('div.section-head', {}, el('h2', {}, 'Overall standings'),
       el('div.toolbar', {}, platformFilter(), source.kind === 'site' ? el('span.small.muted', {}, `Refreshes every ${REFRESH_MS / 1000} s · verified times only`) : '')),
-    hostBar(isHost() ? 'You’re the host: add times here, or edit your file and upload it again.' : 'You can add times as a participant.', addTimeButton()),
+    hostBar(isHost() ? 'You’re the host: add times here, or edit your file and upload it again.' : isParticipant() ? `Enter your times as ${source.name}.` : 'You’re a mod: add or remove anyone’s times.', addTimeButton()),
     table,
     el('p.small.muted', {}, points
       ? `Points per place in each event: ${t.points.join(', ')}. Ties go to more events done, then lower total time.`
@@ -409,9 +436,9 @@ function renderTrack() {
       el('span.r.gap.mono.wide', {}, formatGap(b.gapLead)),
       el('span.wide', {}, proof),
       edit
-        ? el('button.del-btn', { type: 'button', disabled: liveEnded(), 'aria-label': `Remove ${run.racer}'s time`, title: 'Remove this time', onclick: () =>
+        ? (ownRun(run) ? el('button.del-btn', { type: 'button', disabled: liveEnded(), 'aria-label': `Remove ${run.racer}'s time`, title: 'Remove this time', onclick: () =>
           confirmDialog('Remove this time?', `${run.racer}: ${formatTime(run.time_ms)} on ${track} · ${cls}. Their next-best time on this event counts instead.`,
-            () => actions.removeTime(run), 'Remove') }, '✕')
+            () => actions.removeTime(run), 'Remove') }, '✕') : el('span', {}, ''))
         : el('span.wide.small.muted', {}, formatDate(run.reviewed_at || run.submitted_at))));
   }
   table.append(rows);
@@ -425,13 +452,13 @@ function renderBracket() {
   const t = data.tournament;
   const b = t.bracket;
   const standingsNames = () => standings().rows.map(r => r.name);
-  const createBtn = isHost() ? el('button.btn.small', { type: 'button', disabled: liveEnded(), onclick: () => {
+  const createBtn = canManage() ? el('button.btn.small', { type: 'button', disabled: liveEnded(), onclick: () => {
     if (data.players.length + standingsNames().length < 2) { toast('Add at least two players (Players tab) or two racers with times first.', 'error'); return; }
     newBracketDialog(data.players, standingsNames(), next => actions.saveBracket(next, `Bracket created (${next.entrants.length} ${next.kind})`));
   } }, b ? 'New bracket' : 'Create a bracket') : '';
   if (!b) {
     return [el('div.section-head', {}, el('h2', {}, 'Bracket')),
-      hostBar('Build a single-elimination bracket from your players or teams.', createBtn),
+      canManage() ? hostBar('Build a single-elimination bracket from your players or teams.', createBtn) : '',
       el('div.panel.panel-pad', {}, el('p.muted', {}, 'No bracket yet.'))];
   }
   const myKey = me.get().name ? racerKey(me.get().name) : null;
@@ -447,7 +474,7 @@ function renderBracket() {
   };
   const rounds = b.rounds.map((round, r) => el('div.round', {},
     el('div.round-name', {}, roundName(r, b.rounds.length)),
-    el('div.round-matches', {}, round.map((m, i) => (canEdit() && !liveEnded() && m.a && m.b
+    el('div.round-matches', {}, round.map((m, i) => (canManage() && !liveEnded() && m.a && m.b
       ? el('button.match', { type: 'button', 'aria-label': `${m.a} vs ${m.b}: record result`,
         onclick: () => matchDialog(structuredClone(b), r, i, (next, detail) => actions.saveMatch(next, detail)) }, slot(m, 'a', r), slot(m, 'b', r))
       : el('div.match', {}, slot(m, 'a', r), slot(m, 'b', r)))))));
@@ -455,8 +482,8 @@ function renderBracket() {
   return [
     el('div.section-head', {}, el('h2', {}, 'Bracket'),
       el('span.small.muted', {}, `${b.entrants.length} ${b.kind} · single elimination · faster time wins each match`)),
-    hostBar('Click a match to enter times or pick the winner. Winners move on automatically.', createBtn,
-      isHost() ? el('button.btn.small.danger', { type: 'button', disabled: liveEnded(), onclick: () => confirmDialog('Remove the bracket?', 'All match results in it are lost.', () => actions.saveBracket(null, 'Bracket removed'), 'Remove') }, 'Remove bracket') : ''),
+    canManage() ? hostBar('Click a match to enter times or pick the winner. Winners move on automatically.', createBtn,
+      canManage() ? el('button.btn.small.danger', { type: 'button', disabled: liveEnded(), onclick: () => confirmDialog('Remove the bracket?', 'All match results in it are lost.', () => actions.saveBracket(null, 'Bracket removed'), 'Remove') }, 'Remove bracket') : '') : '',
     winner ? el('div.champion', {}, el('span', {}, 'Champion'), el('b', {}, winner)) : '',
     el('div.bracket-scroll', {}, el('div.bracket', { style: { '--rounds': b.rounds.length } }, rounds)),
   ];
@@ -468,13 +495,13 @@ function renderPlayers() {
   const s = standings();
   const byRacer = new Map(s.rows.map(r => [r.id, r]));
   const myKey = me.get().name ? racerKey(me.get().name) : null;
-  const editBtn = isHost() ? el('button.btn.small', { type: 'button', disabled: liveEnded(), onclick: () => playersDialog(players, async list => {
+  const editBtn = canManage() ? el('button.btn.small', { type: 'button', disabled: liveEnded(), onclick: () => playersDialog(players, async list => {
     const names = new Set(list.map(p => p.name.toLowerCase()));
     const orphaned = [...new Set(data.runs.filter(r => !names.has(r.racer.toLowerCase())).map(r => r.racer))];
     if (list.length && orphaned.length) throw new Error(`${orphaned.join(', ')} ${orphaned.length === 1 ? 'has times but isn’t' : 'have times but aren’t'} in the list. Add them, or remove their times first.`);
     await actions.savePlayers(list);
   }) }, players.length ? 'Edit players' : 'Add players') : '';
-  const bar = isHost() ? hostBar('Who’s playing, in seed order. Brackets and the wheel use this list.', editBtn) : '';
+  const bar = canManage() ? hostBar('Who’s playing, in seed order. Brackets and the wheel use this list.', editBtn) : '';
   if (!players.length) {
     return [el('div.section-head', {}, el('h2', {}, 'Players')), bar,
       el('div.panel.panel-pad', {}, el('p.muted', {}, source.kind === 'site'
@@ -557,7 +584,7 @@ function renderGrid(t) {
 let pushQueued = null;
 function pushTimer() {
   const r = room();
-  if (!r || !canEdit() || !store.get('shareTimer', true) || liveEnded()) return;
+  if (!r || !canManage() || !store.get('shareTimer', true) || liveEnded()) return;
   clearTimeout(pushQueued);
   pushQueued = setTimeout(() => {
     const s = timer.get();
@@ -569,14 +596,17 @@ function pushTimer() {
 // ---------- Going live ----------
 function goLiveDialog() {
   formDialog('Go live', form => form.append(
-    el('p', {}, 'Puts this tournament on tournament.codeman.club under a short code. Anyone with the code can watch the standings, bracket, timer and your messages update live.'),
-    el('label.check', {}, el('input', { type: 'checkbox', name: 'participants' }),
-      el('span', {}, el('b', {}, 'Let participants edit. '), 'Makes a second, separate code that lets helpers add times and bracket results. Only you can change players, the bracket layout or end it.')),
+    el('p', {}, 'Puts this tournament on tournament.codeman.club with three codes to hand out:'),
+    el('ul.small', {},
+      el('li', {}, el('b', {}, 'Viewer code: '), 'watch the standings, bracket, timer and your messages update live.'),
+      el('li', {}, el('b', {}, 'Participant code: '), 'racers enter and remove their own times.'),
+      el('li', {}, el('b', {}, 'Mod code: '), 'helpers run it with you: any time, bracket, players, timer, messages.')),
+    el('p.note', {}, 'Only you can make new codes or turn the participant and mod codes off.'),
     el('p.note', {}, 'The tournament stays saved in this browser too, and keeps updating while it’s live.')),
   async form => {
     const rec = localRecord();
-    const res = await startRoom(rec, form.elements.participants.checked);
-    rec.room = { code: res.code, host_key: res.host_key, edit_code: res.edit_code };
+    const res = await startRoom(rec);
+    rec.room = { code: res.code, host_key: res.host_key };
     local.log(rec, `Went live with code ${prettyCode(res.code)}`);
     local.save(rec);
     version = 0;

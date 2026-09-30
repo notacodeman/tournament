@@ -24,7 +24,7 @@ function freshDraft() {
     scoring: 'time', points: DEFAULT_POINTS.join(' '),
     players: '', platforms: p.platforms.join(', '),
     name: '', description: '', rules: p.rules,
-    goLive: false, participants: false,
+    goLive: false,
   };
 }
 
@@ -126,9 +126,7 @@ const views = [
         el('span', {}, draft.scoring === 'points' ? 'Points per place' : 'Lowest total time'),
         el('span', {}, players ? `${players} players` : 'No player list')),
       el('label.check', {}, el('input', { type: 'checkbox', name: 'goLive', checked: draft.goLive }),
-        el('span', {}, el('b', {}, 'Go live now. '), 'Shares it under a short code so people can watch it update. You can also do this later.')),
-      el('label.check', { id: 'partField', hidden: !draft.goLive }, el('input', { type: 'checkbox', name: 'participants', checked: draft.participants }),
-        el('span', {}, el('b', {}, 'Let helpers edit. '), 'Makes a second code that lets others add times and bracket results.')),
+        el('span', {}, el('b', {}, 'Go live now. '), 'Gives you three codes to hand out: viewers watch, participants enter their own times, mods help you run it. You can also do this later.')),
       el('p.note', {}, 'Saved in this browser. A live copy is removed from the site a week after its last change.'),
     ];
   },
@@ -152,7 +150,7 @@ function read() {
   if (step === 4) { draft.players = val('players'); draft.platforms = val('platforms'); }
   if (step === 5) {
     draft.name = String(val('name')).trim(); draft.description = val('description'); draft.rules = val('rules');
-    draft.goLive = f.goLive.checked; draft.participants = f.participants.checked;
+    draft.goLive = f.goLive.checked;
   }
 }
 
@@ -194,8 +192,6 @@ function render() {
   // show fields only when they apply
   $('#wizForm').querySelectorAll('input[name=preset]').forEach(r => r.addEventListener('change', () => { $('#gameField').hidden = r.value === 'pgrc' || !r.checked; }));
   $('#wizForm').querySelectorAll('input[name=scoring]').forEach(r => r.addEventListener('change', () => { $('#pointsField').hidden = r.value !== 'points' || !r.checked; }));
-  const live = $('#wizForm').elements.goLive;
-  live?.addEventListener('change', () => { $('#partField').hidden = !live.checked; });
   $('#wizBody').querySelector('input:not([type=radio]):not([type=checkbox]), textarea')?.focus({ preventScroll: true });
 }
 
@@ -215,8 +211,8 @@ async function finish() {
   local.save(record);
   if (draft.goLive) {
     try {
-      const res = await startRoom(record, draft.participants);
-      record.room = { code: res.code, host_key: res.host_key, edit_code: res.edit_code };
+      const res = await startRoom(record);
+      record.room = { code: res.code, host_key: res.host_key };
       local.save(record);
     } catch (err) {
       toast(`Saved, but it couldn’t go live: ${err.message} You can try again with Go live.`, 'error');

@@ -44,11 +44,12 @@
     </label>
     <form class="panel join" id="joinForm">
       <label for="joinCode">Join a live tournament</label>
-      <input type="text" id="joinCode" maxlength="9" autocomplete="off" spellcheck="false" placeholder="K7M-2QX" aria-describedby="joinHelp">
+      <input type="text" id="joinCode" maxlength="12" autocomplete="off" spellcheck="false" placeholder="K7M-2QX" aria-describedby="joinHelp">
       <button class="btn teal" type="submit">Join</button>
-      <span class="note" id="joinHelp" style="grid-column: 1 / -1">A viewer code opens the watch page. A participant code lets you add times and results.</span>
+      <span class="note" id="joinHelp" style="grid-column: 1 / -1">A viewer code opens the watch page. A participant code lets you enter your own times. A mod code lets you help run the tournament.</span>
       <label class="field" id="joinNameField" hidden style="grid-column: 1 / -1">Your name <span class="note">Shown next to the changes you make</span>
-        <input type="text" id="joinName" maxlength="32" autocomplete="nickname">
+        <input type="text" id="joinName" maxlength="32" autocomplete="nickname" list="joinNames">
+        <datalist id="joinNames"></datalist>
       </label>
     </form>
     <div id="startMsg"></div>

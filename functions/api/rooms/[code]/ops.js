@@ -28,11 +28,12 @@ export async function onRequestPost({ env, request, params }) {
       announce: 'announce' in change ? (change.announce ? JSON.stringify(change.announce) : null) : room.announce,
       live: 'live' in change ? change.live : room.live,
       edit_code: 'editCode' in change ? change.editCode : room.edit_code,
+      mod_code: 'modCode' in change ? change.modCode : room.mod_code,
     };
-    const result = await env.DB.prepare(`UPDATE rooms SET data = ?, timer = ?, announce = ?, live = ?, edit_code = ?,
+    const result = await env.DB.prepare(`UPDATE rooms SET data = ?, timer = ?, announce = ?, live = ?, edit_code = ?, mod_code = ?,
         version = version + 1, updated_at = ? WHERE id = ? AND version = ?`)
-      .bind(next.data, next.timer, next.announce, next.live, next.edit_code, new Date().toISOString(), room.id, room.version).run();
-    if (result.meta.changes) return json({ ok: true, version: room.version + 1, edit_code: role === 'host' ? next.edit_code : undefined });
+      .bind(next.data, next.timer, next.announce, next.live, next.edit_code, next.mod_code, new Date().toISOString(), room.id, room.version).run();
+    if (result.meta.changes) return json({ ok: true, version: room.version + 1 });
   }
   return fail('Lots of changes at once. Try again.', 409);
 }

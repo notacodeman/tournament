@@ -65,16 +65,21 @@ export function playersDialog(players, onSave) {
 // onSave({ racer, platform, track, cls, time_ms, penalty_ms, penalty_note })
 export function addTimeDialog(tournament, players, onSave, preset = {}) {
   formDialog('Add a time', form => {
-    const racer = players.length
+    // preset.lockRacer: a participant entering their own time, so the racer is fixed
+    const racer = preset.lockRacer
+      ? el('input', { type: 'text', name: 'racer', readonly: true, value: preset.racer || '' })
+      : players.length
       ? el('select', { name: 'racer', required: true }, el('option', { value: '' }, 'Pick a racer'),
         ...players.map(p => el('option', { value: p.name, selected: p.name === preset.racer }, p.team ? `${p.name} (${p.team})` : p.name)))
       : el('input', { type: 'text', name: 'racer', required: true, maxlength: 32, value: preset.racer || '', autocomplete: 'off' });
     const platform = el('select', { name: 'platform' }, el('option', { value: '' }, '—'),
       ...tournament.platforms.map(p => el('option', { value: p }, p)));
-    racer.addEventListener('change', () => {
-      const p = players.find(x => x.name === racer.value);
+    const fillPlatform = () => {
+      const p = players.find(x => x.name.toLowerCase() === racer.value.toLowerCase());
       if (p?.platform) platform.value = p.platform;
-    });
+    };
+    racer.addEventListener('change', fillPlatform);
+    fillPlatform();
     form.append(el('div.form-grid', {},
       el('label.field', {}, 'Racer', racer),
       el('label.field', {}, 'Platform', platform),

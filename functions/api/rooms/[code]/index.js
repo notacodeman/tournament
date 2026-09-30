@@ -1,4 +1,4 @@
-// GET /api/rooms/<code>[?since=<version>]: a live tournament. <code> is the viewer code or the participant code;
+// GET /api/rooms/<code>[?since=<version>]: a live tournament. <code> is its viewer, participant or mod code;
 // the X-Host-Key header makes it the host. With ?since and nothing new, returns { unchanged: true } (cheap polling).
 
 import { json, fail } from '../../../../lib/api.js';
@@ -18,7 +18,9 @@ export async function onRequestGet({ env, request, params }) {
   return json({
     ok: true, role, version: room.version, live: !!room.live, server_now: now,
     code: room.code,
-    edit_code: role === 'host' || role === 'participant' ? room.edit_code : undefined,
+    // the codes a role may hand out: mods and the host see all three, participants and viewers only the viewer code
+    edit_code: role === 'host' || role === 'mod' ? room.edit_code : undefined,
+    mod_code: role === 'host' || role === 'mod' ? room.mod_code : undefined,
     data: JSON.parse(room.data),
     timer: room.timer ? JSON.parse(room.timer) : null,
     announce: room.announce ? JSON.parse(room.announce) : null,

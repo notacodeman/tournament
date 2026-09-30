@@ -87,7 +87,7 @@ async function renderRooms() {
     const list = rooms.filter(r => !q || `${r.name} ${r.game} ${r.code}`.toLowerCase().includes(q));
     rows.replaceChildren(...(list.length ? list.map(r => el('div.row', {},
       el('span', {}, el('span.name', {}, r.name || '(no name)'),
-        el('span.sub', {}, [r.game, r.live ? 'live' : 'ended', r.participants ? 'helpers can edit' : '', `${Math.round(r.bytes / 1024)} KB`].filter(Boolean).join(' · ')),
+        el('span.sub', {}, [r.game, r.live ? 'live' : 'ended', r.participants ? 'participant code on' : '', r.mods ? 'mod code on' : '', `${Math.round(r.bytes / 1024)} KB`].filter(Boolean).join(' · ')),
         el('span.sub.phone-only', {}, `${r.code} · ${r.players} players · ${r.runs} times · deletes ${formatDate(r.deletes_at)}`)),
       el('span.wide.mono', {}, r.code),
       el('span.wide', {}, `${r.players} · ${r.runs}`),

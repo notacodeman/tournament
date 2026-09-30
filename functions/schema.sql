@@ -76,7 +76,8 @@ CREATE INDEX IF NOT EXISTS audit_by_tournament ON audit (tournament_id, id);
 CREATE TABLE IF NOT EXISTS rooms (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT NOT NULL UNIQUE,              -- viewer code, 6 characters
-  edit_code TEXT UNIQUE,                  -- participant code, 8 characters; NULL when participants can't edit
+  edit_code TEXT UNIQUE,                  -- participant code, 8 characters: enter their own times; NULL when off
+  mod_code TEXT UNIQUE,                   -- mod code, 10 characters: run the tournament; NULL when off
   host_hash TEXT NOT NULL,                -- SHA-256 of the host key kept in the host's browser
   data TEXT NOT NULL,
   timer TEXT,                             -- JSON: shared race clock
@@ -103,3 +104,7 @@ CREATE TABLE IF NOT EXISTS meta (
   value TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS rooms_by_updated ON rooms (updated_at);
+
+-- Added after the first version: the mod code. On a database made before it, run once:
+--   ALTER TABLE rooms ADD COLUMN mod_code TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS rooms_by_mod_code ON rooms (mod_code);

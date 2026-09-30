@@ -127,17 +127,23 @@ async function handleFile(file) {
 }
 
 // ---------- Joining with a code ----------
-let pendingJoin = null;   // { code, tournament } waiting for the participant's name
+let pendingJoin = null;   // { code, role, tournament, players } waiting for a name
 
 async function join(e) {
   e?.preventDefault();
   const code = cleanCode($('#joinCode').value);
-  if (code.length < 6) { message('error', 'Codes are 6 or 8 letters and numbers, like K7M-2QX.'); return; }
+  if (code.length < 6) { message('error', 'Codes are 6, 8 or 10 letters and numbers, like K7M-2QX.'); return; }
   if (pendingJoin?.code === code) {
     const name = $('#joinName').value.trim().replace(/\s+/g, ' ');
-    if (!name) { message('error', 'Enter your name so others can see who made each change.'); $('#joinName').focus(); return; }
-    joined.add({ code, name, tournament: pendingJoin.tournament });
-    selected = { kind: 'room', code, name };
+    if (!name) { message('error', pendingJoin.role === 'participant' ? 'Enter your racer name.' : 'Enter your name so others can see who made each change.'); $('#joinName').focus(); return; }
+    let finalName = name;
+    if (pendingJoin.role === 'participant' && pendingJoin.players.length) {
+      // participants enter times for themselves, so the name has to be on the player list
+      finalName = pendingJoin.players.find(p => p.toLowerCase() === name.toLowerCase());
+      if (!finalName) { message('error', `“${name}” isn’t on the player list. Pick your name from the list.`); $('#joinName').focus(); return; }
+    }
+    joined.add({ code, name: finalName, role: pendingJoin.role, tournament: pendingJoin.tournament });
+    selected = { kind: 'room', code, name: finalName, role: pendingJoin.role };
     pendingJoin = null;
     open();
     return;
@@ -145,10 +151,16 @@ async function join(e) {
   try {
     const room = await getRoom(code);
     if (room.role === 'viewer') { location.href = `watch?code=${code}`; return; }
-    pendingJoin = { code, tournament: room.data.tournament.name };
+    const players = (room.data.players || []).map(p => p.name);
+    pendingJoin = { code, role: room.role === 'mod' ? 'mod' : 'participant', tournament: room.data.tournament.name, players };
+    const racer = pendingJoin.role === 'participant';
     $('#joinNameField').hidden = false;
+    $('#joinNameField').firstChild.textContent = racer ? 'Your racer name ' : 'Your name ';
+    $('#joinNameField .note').textContent = racer ? (players.length ? 'Pick yourself from the player list. You can enter and remove your own times.' : 'Your times are entered under this name.') : 'Shown next to the changes you make';
+    $('#joinNames').replaceChildren(...(racer ? players : []).map(n => el('option', { value: n })));
     $('#joinName').value = joined.get().find(j => j.code === code)?.name || me.get().name || '';
-    message('ok', `Participant code for “${pendingJoin.tournament}”. Enter your name and press Join.`);
+    message('ok', racer ? `Participant code for “${pendingJoin.tournament}”. Enter your racer name and press Join.`
+      : `Mod code for “${pendingJoin.tournament}”. Enter your name and press Join.`);
     $('#joinName').focus();
   } catch (err) {
     message('error', err.message);
@@ -233,7 +245,7 @@ const localId = q.get('local');
 const roomCode = cleanCode(q.get('room'));
 const joinCode = cleanCode(q.get('join'));
 const rejoin = roomCode && joined.get().find(j => j.code === roomCode);
-if (rejoin) selected = { kind: 'room', code: rejoin.code, name: rejoin.name };
+if (rejoin) selected = { kind: 'room', code: rejoin.code, name: rejoin.name, role: rejoin.role || 'participant' };
 else if (localId && local.get(localId)) selected = { kind: 'local', id: localId };
 else {
   const last = store.get('lastPick');
